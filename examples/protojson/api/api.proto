@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package monitoring.v2alpha;
+
+option go_package = "github.com/mikluko/peanats/examples/protojson/api";
+
+message Argument {
+  string arg = 1;
+}
+
+message Result {
+  string res = 1;
+}
