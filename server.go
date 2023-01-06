@@ -63,7 +63,7 @@ func (s *Server) Start() error {
 
 	s.ctx, s.shutdown = context.WithCancel(s.BaseContext)
 	s.grp, s.ctx = errgroup.WithContext(s.ctx)
-	s.ch = make(chan *nats.Msg)
+	s.ch = make(chan *nats.Msg, nats.DefaultMaxChanLen)
 
 	for i := 0; i < s.Concurrency; i++ {
 		s.grp.Go(func() error {
