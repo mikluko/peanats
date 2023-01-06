@@ -119,6 +119,11 @@ func (s *Server) handleMsg(msg *nats.Msg) {
 	rq := requestImpl{
 		msg: msg,
 	}
+	if msg.Header == nil {
+		rq.header = make(nats.Header)
+	} else {
+		rq.header = msg.Header
+	}
 	rq.ctx, rq.done = context.WithCancel(s.BaseContext)
 	err := s.Handler.Serve(&publisher{conn: s.Conn, msg: msg}, &rq)
 	if err != nil {
@@ -141,9 +146,10 @@ func (s *Server) handleMsgLoop() error {
 }
 
 type requestImpl struct {
-	ctx  context.Context
-	done context.CancelFunc
-	msg  *nats.Msg
+	ctx    context.Context
+	done   context.CancelFunc
+	msg    *nats.Msg
+	header nats.Header
 }
 
 func (r *requestImpl) Context() context.Context {
@@ -165,7 +171,7 @@ func (r *requestImpl) Subject() string {
 }
 
 func (r *requestImpl) Header() *nats.Header {
-	return &r.msg.Header
+	return &r.header
 }
 
 func (r *requestImpl) Data() []byte {
