@@ -1,6 +1,8 @@
 package peanats
 
-import "github.com/nats-io/nuid"
+import (
+	"github.com/nats-io/nuid"
+)
 
 const HeaderRequestUID = "Request-UID"
 
@@ -11,10 +13,13 @@ type UIDGenerator interface {
 func MakeRequestUIDMiddleware(gen UIDGenerator) Middleware {
 	return func(next Handler) Handler {
 		return HandlerFunc(func(pub Publisher, req Request) error {
-			if req.Header().Get(HeaderRequestUID) == "" {
-				req.Header().Set(HeaderRequestUID, gen.Next())
+			header := req.Header()
+			uid := header.Get(HeaderRequestUID)
+			if uid == "" {
+				uid = gen.Next()
+				header.Set(HeaderRequestUID, uid)
 			}
-			return next.Serve(pub, req)
+			return next.Serve(&requestUIDPublisher{pub, uid}, req)
 		})
 	}
 }
@@ -26,3 +31,26 @@ func (g *globalNUIDGenerator) Next() string {
 }
 
 var RequestUIDMiddleware = MakeRequestUIDMiddleware(&globalNUIDGenerator{})
+
+type requestUIDPublisher struct {
+	Publisher
+	uid string
+}
+
+func (p *requestUIDPublisher) Ack(data []byte) error {
+	ack, ok := p.Publisher.(AckPublisher)
+	if !ok {
+		return nil
+	}
+	if ack.Header().Get(HeaderRequestUID) == "" {
+		ack.Header().Set(HeaderRequestUID, p.uid)
+	}
+	return ack.Ack(data)
+}
+
+func (p *requestUIDPublisher) Publish(data []byte) error {
+	if p.Header().Get(HeaderRequestUID) == "" {
+		p.Header().Set(HeaderRequestUID, p.uid)
+	}
+	return p.Publisher.Publish(data)
+}

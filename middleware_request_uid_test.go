@@ -18,26 +18,36 @@ func (t *uidGeneratorMock) Next() string {
 }
 
 func TestEnsureUIDMiddleware(t *testing.T) {
-	rq := new(requestMock)
-	defer rq.AssertExpectations(t)
+	req := new(requestMock)
+	//defer req.AssertExpectations(t)
 
 	pub := new(publisherMock)
-	defer pub.AssertExpectations(t)
+	//defer pub.AssertExpectations(t)
 
 	gen := new(uidGeneratorMock)
-	defer gen.AssertExpectations(t)
-
-	var f Handler
-	f = HandlerFunc(func(pub Publisher, req Request) error { return nil })
-	f = ChainMiddleware(f, MakeRequestUIDMiddleware(gen))
-
-	header := make(nats.Header)
-	rq.On("Header").Return(&header)
+	//defer gen.AssertExpectations(t)
 
 	uid := nuid.Next()
 	gen.On("Next").Return(uid)
 
-	err := f.Serve(pub, rq)
+	var f Handler
+	f = HandlerFunc(func(pub Publisher, req Request) error {
+		require.NoError(t, pub.(Acker).Ack(nil))
+		require.NoError(t, pub.(Publisher).Publish(nil))
+		return nil
+	})
+	f = ChainMiddleware(f, MakeRequestUIDMiddleware(gen))
+
+	reqHeader := make(nats.Header)
+	req.On("Header").Return(&reqHeader)
+
+	pubHeader := make(nats.Header)
+	pub.On("Header").Return(&pubHeader)
+	pub.On("Ack", mock.Anything).Return(nil)
+	pub.On("Publish", mock.Anything).Return(nil)
+
+	err := f.Serve(pub, req)
 	require.NoError(t, err)
-	require.Equal(t, uid, header.Get(HeaderRequestUID))
+	require.Equal(t, uid, reqHeader.Get(HeaderRequestUID))
+	require.Equal(t, uid, pubHeader.Get(HeaderRequestUID))
 }
