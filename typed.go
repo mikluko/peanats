@@ -96,24 +96,24 @@ type Codec interface {
 
 type JsonCodec struct{}
 
-func (*JsonCodec) Encode(v any) ([]byte, error) {
+func (JsonCodec) Encode(v any) ([]byte, error) {
 	return json.Marshal(v)
 }
 
-func (*JsonCodec) Decode(data []byte, vPtr any) error {
+func (JsonCodec) Decode(data []byte, vPtr any) error {
 	return json.Unmarshal(data, vPtr)
 }
 
 type ProtojsonCodec struct{}
 
-func (p ProtojsonCodec) Encode(v any) ([]byte, error) {
+func (ProtojsonCodec) Encode(v any) ([]byte, error) {
 	if msg, ok := v.(proto.Message); ok {
 		return protojson.Marshal(msg)
 	}
 	return nil, fmt.Errorf("%T is not a proto.Message", v)
 }
 
-func (p ProtojsonCodec) Decode(data []byte, vPtr any) error {
+func (ProtojsonCodec) Decode(data []byte, vPtr any) error {
 	if msg, ok := vPtr.(proto.Message); ok {
 		return protojson.Unmarshal(data, msg)
 	}
