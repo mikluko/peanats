@@ -3,11 +3,12 @@ package peanats
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"testing"
 )
 
 type testAdapterArgument struct {
@@ -18,7 +19,7 @@ type testAdapterResult struct {
 	Res string `json:"res"`
 }
 
-func TestAdapter(t *testing.T) {
+func TestTyped(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		arg := testAdapterArgument{Arg: "Hello, world!"}
 		res := testAdapterResult{Res: "Goodbye, world!"}
@@ -40,35 +41,6 @@ func TestAdapter(t *testing.T) {
 
 		req.On("Data").Return(must(json.Marshal(&arg)))
 
-		pub.On("Publish", mock.Anything).Run(func(args mock.Arguments) {
-			data := args.Get(0).([]byte)
-			assert.Equal(t, must(json.Marshal(&res)), data)
-		}).Return(nil)
-
-		err := f.Serve(pub, req)
-		require.NoError(t, err)
-	})
-	t.Run("ack", func(t *testing.T) {
-		arg := testAdapterArgument{Arg: "Hello, world!"}
-		res := testAdapterResult{Res: "Goodbye, world!"}
-
-		af := TypedHandlerFunc[testAdapterArgument, testAdapterResult](
-			func(pub TypedPublisher[testAdapterResult], req TypedRequest[testAdapterArgument]) error {
-				assert.Equal(t, &arg, req.Argument())
-				return pub.Publish(&res)
-			},
-		)
-		f := Typed[testAdapterArgument, testAdapterResult](&JsonCodec{}, af)
-
-		pub := new(publisherAckerMock)
-		defer pub.AssertExpectations(t)
-
-		req := new(requestMock)
-		defer req.AssertExpectations(t)
-
-		req.On("Data").Return(must(json.Marshal(&arg)))
-
-		pub.On("Ack", mock.Anything).Return(nil)
 		pub.On("Publish", mock.Anything).Run(func(args mock.Arguments) {
 			data := args.Get(0).([]byte)
 			assert.Equal(t, must(json.Marshal(&res)), data)

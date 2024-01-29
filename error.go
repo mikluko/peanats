@@ -50,11 +50,6 @@ func prepareError(pub Publisher, err error) {
 	}
 }
 
-func AckError(ack AckPublisher, err error) error {
-	prepareError(ack, err)
-	return ack.Ack(nil)
-}
-
 func PublishError(pub Publisher, err error) error {
 	prepareError(pub, err)
 	return pub.Publish(nil)

@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"net/http"
 )
 
 type TypedRequest[ArgT any] interface {
@@ -39,12 +40,6 @@ func Typed[ArgT, ResT any](c Codec, f TypedHandler[ArgT, ResT]) Handler {
 				Code:    http.StatusBadRequest,
 				Message: http.StatusText(http.StatusBadRequest),
 				Cause:   err,
-			}
-		}
-		if acker, ok := pub.(Acker); ok {
-			err := acker.Ack(nil)
-			if err != nil {
-				return err
 			}
 		}
 		return f.Serve(&typedPublisherImpl[ResT]{c, pub}, &typedRequestImpl[ArgT]{arg: arg})

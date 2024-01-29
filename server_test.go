@@ -44,9 +44,6 @@ func TestServer(t *testing.T) {
 		ListenSubjects: []string{"test.requests"},
 		Handler: ChainMiddleware(HandlerFunc(func(pub Publisher, req Request) error {
 			require.Equal(t, []byte("test"), req.Data())
-			ack := pub.(Acker)
-			err := ack.Ack(nil)
-			require.NoError(t, err)
 			return pub.Publish([]byte("test"))
 		}), MakePublishSubjectMiddleware(nc, "test.results")),
 	}
@@ -57,7 +54,7 @@ func TestServer(t *testing.T) {
 	require.NoError(t, err)
 	_ = sub.AutoUnsubscribe(1)
 
-	_, err = nc.RequestWithContext(ctx, "test.requests", []byte("test"))
+	err = nc.Publish("test.requests", []byte("test"))
 	require.NoError(t, err)
 
 	msg, err := sub.NextMsgWithContext(ctx)
@@ -81,15 +78,6 @@ func (p *publisherMock) Header() *nats.Header {
 }
 
 func (p *publisherMock) Publish(data []byte) error {
-	args := p.Called(data)
-	return args.Error(0)
-}
-
-type publisherAckerMock struct {
-	publisherMock
-}
-
-func (p *publisherAckerMock) Ack(data []byte) error {
 	args := p.Called(data)
 	return args.Error(0)
 }

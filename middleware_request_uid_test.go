@@ -1,11 +1,12 @@
 package peanats
 
 import (
+	"testing"
+
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type uidGeneratorMock struct {
@@ -32,7 +33,6 @@ func TestEnsureUIDMiddleware(t *testing.T) {
 
 	var f Handler
 	f = HandlerFunc(func(pub Publisher, req Request) error {
-		require.NoError(t, pub.(Acker).Ack(nil))
 		require.NoError(t, pub.(Publisher).Publish(nil))
 		return nil
 	})

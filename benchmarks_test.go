@@ -3,8 +3,9 @@ package peanats
 import (
 	"context"
 	"fmt"
-	"github.com/nats-io/nats.go"
 	"testing"
+
+	"github.com/nats-io/nats.go"
 )
 
 func BenchmarkSimple(b *testing.B) {
@@ -20,10 +21,6 @@ func BenchmarkSimple(b *testing.B) {
 		Conn:           srvConn,
 		ListenSubjects: []string{"test.requests"},
 		Handler: HandlerFunc(func(pub Publisher, req Request) (err error) {
-			err = pub.(Acker).Ack(nil)
-			if err != nil {
-				return
-			}
 			return pub.Publish([]byte("test"))
 		}),
 	}
@@ -115,7 +112,7 @@ func BenchmarkServeMux(b *testing.B) {
 		req := new(requestMock)
 		req.On("Subject").Return("foo").Times(b.N)
 
-		pub := new(publisherAckerMock)
+		pub := new(publisherMock)
 		pub.On("Publish", []byte("hello")).Return(nil).Times(b.N)
 
 		b.ResetTimer()

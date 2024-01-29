@@ -6,18 +6,9 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-type Acker interface {
-	Ack(data []byte) error
-}
-
 type Publisher interface {
 	Header() *nats.Header
 	Publish(data []byte) error
-}
-
-type AckPublisher interface {
-	Acker
-	Publisher
 }
 
 type publisher struct {
@@ -41,20 +32,6 @@ func (p *publisher) Publish(_ []byte) error {
 	return nil
 }
 
-func (p *publisher) Ack(data []byte) error {
-	p.once.Do(p.init)
-	if p.msg == nil || p.msg.Sub == nil {
-		return nil
-	}
-	if p.msg.Reply == "" {
-		return nil
-	}
-	res := new(nats.Msg)
-	res.Data = data
-	res.Header = p.header
-	return p.msg.RespondMsg(res)
-}
-
 type subjectPublisher struct {
 	Publisher
 	conn    *nats.Conn
@@ -75,11 +52,4 @@ func (p *subjectPublisher) Publish(data []byte) error {
 		return err
 	}
 	return p.Publisher.Publish(data)
-}
-
-func (p *subjectPublisher) Ack(data []byte) error {
-	if ack, ok := p.Publisher.(Acker); ok {
-		return ack.Ack(data)
-	}
-	return nil
 }

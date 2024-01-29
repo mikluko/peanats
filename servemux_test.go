@@ -2,9 +2,10 @@ package peanats
 
 import (
 	"errors"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestServeMux(t *testing.T) {
@@ -22,7 +23,7 @@ func TestServeMux(t *testing.T) {
 		req := new(requestMock)
 		defer req.AssertExpectations(t)
 
-		pub := new(publisherAckerMock)
+		pub := new(publisherMock)
 		defer pub.AssertExpectations(t)
 
 		req.On("Subject").Return("foo")
@@ -36,7 +37,7 @@ func TestServeMux(t *testing.T) {
 		req := new(requestMock)
 		defer req.AssertExpectations(t)
 
-		pub := new(publisherAckerMock)
+		pub := new(publisherMock)
 		defer pub.AssertExpectations(t)
 
 		req.On("Subject").Return("baz")

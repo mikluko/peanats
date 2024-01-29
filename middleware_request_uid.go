@@ -37,17 +37,6 @@ type requestUIDPublisher struct {
 	uid string
 }
 
-func (p *requestUIDPublisher) Ack(data []byte) error {
-	ack, ok := p.Publisher.(AckPublisher)
-	if !ok {
-		return nil
-	}
-	if ack.Header().Get(HeaderRequestUID) == "" {
-		ack.Header().Set(HeaderRequestUID, p.uid)
-	}
-	return ack.Ack(data)
-}
-
 func (p *requestUIDPublisher) Publish(data []byte) error {
 	if p.Header().Get(HeaderRequestUID) == "" {
 		p.Header().Set(HeaderRequestUID, p.uid)

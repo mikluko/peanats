@@ -1,10 +1,11 @@
 package peanats
 
 import (
-	"github.com/nats-io/nuid"
 	"io"
 	"log"
 	"time"
+
+	"github.com/nats-io/nuid"
 )
 
 func MakeAccessLogMiddleware(w io.Writer) Middleware {
@@ -39,20 +40,6 @@ type loggingPublisher struct {
 	started      time.Time
 	hasAcked     bool
 	hasPublished bool
-}
-
-func (p *loggingPublisher) Ack(data []byte) error {
-	ack, ok := p.Publisher.(Acker)
-	if !ok {
-		return nil
-	}
-	err := ack.Ack(data)
-	if err != nil {
-		return err
-	}
-	p.hasAcked = true
-	p.log(p.uid, p.subj, time.Since(p.started).Milliseconds(), "ack", len(data), p.errCode(), p.errMsg())
-	return nil
 }
 
 func (p *loggingPublisher) Publish(data []byte) error {
