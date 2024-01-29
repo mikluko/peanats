@@ -21,7 +21,7 @@ func TestPublishRespondMiddleware(t *testing.T) {
 	}
 	defer nc.Close()
 
-	mw := MakePublishRespondMiddleware(nc)
+	mw := MakePublishRespondMiddleware(NATS(nc))
 	f := mw(Handler(HandlerFunc(func(pub Publisher, req Request) error {
 		return pub.Publish([]byte("test"))
 	})))

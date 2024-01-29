@@ -40,12 +40,12 @@ func TestServer(t *testing.T) {
 	defer cancel()
 
 	srv := Server{
-		Conn:           nc,
+		Conn:           NATS(nc),
 		ListenSubjects: []string{"test.requests"},
 		Handler: ChainMiddleware(HandlerFunc(func(pub Publisher, req Request) error {
 			require.Equal(t, []byte("test"), req.Data())
 			return pub.Publish([]byte("test"))
-		}), MakePublishSubjectMiddleware(nc, "test.results")),
+		}), MakePublishSubjectMiddleware(NATS(nc), "test.results")),
 	}
 	err = srv.Start()
 	require.NoError(t, err)

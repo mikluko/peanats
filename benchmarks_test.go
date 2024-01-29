@@ -18,7 +18,7 @@ func BenchmarkSimple(b *testing.B) {
 	defer srvConn.Close()
 
 	srv := Server{
-		Conn:           srvConn,
+		Conn:           NATS(srvConn),
 		ListenSubjects: []string{"test.requests"},
 		Handler: HandlerFunc(func(pub Publisher, req Request) (err error) {
 			return pub.Publish([]byte("test"))
@@ -69,7 +69,7 @@ func BenchmarkTypedJson(b *testing.B) {
 	)
 
 	srv := Server{
-		Conn:           srvConn,
+		Conn:           NATS(srvConn),
 		ListenSubjects: []string{"test.requests"},
 		Handler:        Typed[argument, result](&JsonCodec{}, p),
 	}

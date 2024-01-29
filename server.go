@@ -30,7 +30,7 @@ func (f HandlerFunc) Serve(pub Publisher, req Request) error {
 }
 
 type Server struct {
-	Conn           *nats.Conn
+	Conn           Connection
 	Handler        Handler
 	BaseContext    context.Context
 	Concurrency    int
@@ -73,10 +73,10 @@ func (s *Server) Start() error {
 		})
 	}
 
-	var subs []*nats.Subscription
+	var subs []Subscription
 	for _, subj := range s.ListenSubjects {
 		var (
-			sub *nats.Subscription
+			sub Subscription
 			err error
 		)
 		if s.QueueName == "" {
@@ -127,7 +127,7 @@ func (s *Server) handleMsg(msg *nats.Msg) {
 		rq.header = msg.Header
 	}
 	rq.ctx, rq.done = context.WithCancel(s.BaseContext)
-	err := s.Handler.Serve(&publisher{conn: s.Conn, msg: msg}, &rq)
+	err := s.Handler.Serve(&publisher{pub: s.Conn, msg: msg}, &rq)
 	if err != nil {
 		panic(err)
 	}

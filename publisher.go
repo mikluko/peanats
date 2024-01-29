@@ -13,7 +13,7 @@ type Publisher interface {
 
 type publisher struct {
 	header nats.Header
-	conn   *nats.Conn
+	pub    MsgPublisher
 	msg    *nats.Msg
 	once   sync.Once
 }
@@ -34,7 +34,7 @@ func (p *publisher) Publish(_ []byte) error {
 
 type subjectPublisher struct {
 	Publisher
-	conn    *nats.Conn
+	msgpub  MsgPublisher
 	subject string
 }
 
@@ -47,7 +47,7 @@ func (p *subjectPublisher) Publish(data []byte) error {
 	msg.Header = *p.Header()
 	msg.Subject = p.subject
 	msg.Data = data
-	err := p.conn.PublishMsg(&msg)
+	err := p.msgpub.PublishMsg(&msg)
 	if err != nil {
 		return err
 	}

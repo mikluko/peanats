@@ -1,11 +1,9 @@
 package peanats
 
-import "github.com/nats-io/nats.go"
-
-func MakePublishRespondMiddleware(conn *nats.Conn) Middleware {
+func MakePublishRespondMiddleware(msgpub MsgPublisher) Middleware {
 	return func(h Handler) Handler {
 		return HandlerFunc(func(pub Publisher, req Request) error {
-			return h.Serve(&subjectPublisher{pub, conn, req.Reply()}, req)
+			return h.Serve(&subjectPublisher{pub, msgpub, req.Reply()}, req)
 		})
 	}
 }
