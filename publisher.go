@@ -1,8 +1,9 @@
 package peanats
 
 import (
-	"github.com/nats-io/nats.go"
 	"sync"
+
+	"github.com/nats-io/nats.go"
 )
 
 type Acker interface {

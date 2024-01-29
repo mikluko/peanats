@@ -3,16 +3,18 @@ package peanats
 import (
 	"context"
 	"errors"
-	"github.com/nats-io/nats.go"
-	"golang.org/x/sync/errgroup"
 	"runtime"
 	"sync"
+
+	"github.com/nats-io/nats.go"
+	"golang.org/x/sync/errgroup"
 )
 
 type Request interface {
 	Context() context.Context
 	WithContext(ctx context.Context) Request
 	Subject() string
+	Reply() string
 	Header() *nats.Header
 	Data() []byte
 }
@@ -168,6 +170,11 @@ func (r *requestImpl) WithContext(ctx context.Context) Request {
 
 func (r *requestImpl) Subject() string {
 	return r.msg.Subject
+}
+
+func (r *requestImpl) Reply() string {
+	_ = r.msg.Respond(nil)
+	return r.msg.Reply
 }
 
 func (r *requestImpl) Header() *nats.Header {

@@ -2,12 +2,13 @@ package peanats
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	natsrv "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func RunNats(tb testing.TB) *natsrv.Server {
@@ -108,6 +109,11 @@ func (r *requestMock) WithContext(ctx context.Context) Request {
 }
 
 func (r *requestMock) Subject() string {
+	args := r.Mock.Called()
+	return args.Get(0).(string)
+}
+
+func (r *requestMock) Reply() string {
 	args := r.Mock.Called()
 	return args.Get(0).(string)
 }
