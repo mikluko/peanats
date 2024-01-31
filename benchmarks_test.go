@@ -63,7 +63,7 @@ func BenchmarkTypedJson(b *testing.B) {
 
 	p := TypedHandlerFunc[argument, result](
 		func(pub TypedPublisher[result], req TypedRequest[argument]) error {
-			res := result{Res: req.Argument().Arg}
+			res := result{Res: req.Payload().Arg}
 			return pub.Publish(&res)
 		},
 	)

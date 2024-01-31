@@ -11,10 +11,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type TypedRequest[ArgT any] interface {
+type TypedRequest[T any] interface {
 	Context() context.Context
 	Header() *nats.Header
-	Argument() *ArgT
+	Payload() *T
 }
 
 type TypedPublisher[ResT any] interface {
@@ -59,7 +59,7 @@ func (r *typedRequestImpl[ArgT]) Header() *nats.Header {
 	return r.req.Header()
 }
 
-func (r *typedRequestImpl[ArgT]) Argument() *ArgT {
+func (r *typedRequestImpl[ArgT]) Payload() *ArgT {
 	return r.arg
 }
 

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"os"
+
+	"github.com/nats-io/nats.go"
+
 	"github.com/mikluko/peanats"
 	"github.com/mikluko/peanats/examples/json/api"
-	"github.com/nats-io/nats.go"
-	"os"
 )
 
 func main() {
@@ -36,5 +38,5 @@ func main() {
 }
 
 func handle(pub peanats.TypedPublisher[api.Result], req peanats.TypedRequest[api.Argument]) error {
-	return pub.Publish(&api.Result{Res: req.Argument().Arg})
+	return pub.Publish(&api.Result{Res: req.Payload().Arg})
 }

@@ -26,7 +26,7 @@ func TestTyped(t *testing.T) {
 
 		p := TypedHandlerFunc[testAdapterArgument, testAdapterResult](
 			func(pub TypedPublisher[testAdapterResult], req TypedRequest[testAdapterArgument]) error {
-				assert.Equal(t, req.Argument(), &arg)
+				assert.Equal(t, req.Payload(), &arg)
 				return pub.Publish(&res)
 			},
 		)
