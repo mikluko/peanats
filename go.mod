@@ -1,12 +1,15 @@
 module github.com/mikluko/peanats
 
-go 1.19
+go 1.21
+
+toolchain go1.21.6
 
 require (
+	github.com/alitto/pond v1.8.3
 	github.com/nats-io/nats-server/v2 v2.10.9
 	github.com/nats-io/nats.go v1.32.0
 	github.com/nats-io/nuid v1.0.1
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.4
 	go.uber.org/multierr v1.11.0
 	golang.org/x/sync v0.6.0
 	google.golang.org/protobuf v1.32.0
@@ -21,7 +24,6 @@ require (
 	github.com/nats-io/nkeys v0.4.7 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect

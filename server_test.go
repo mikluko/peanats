@@ -61,11 +61,8 @@ func TestServer(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("test"), msg.Data)
 
-	err = srv.Shutdown()
-	require.NoError(t, err)
-
-	err = srv.Wait()
-	require.NoError(t, err)
+	srv.Shutdown()
+	srv.Wait()
 }
 
 type publisherMock struct {

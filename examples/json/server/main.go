@@ -32,10 +32,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = srv.Wait()
-	if err != nil {
-		panic(err)
-	}
+
+	srv.Wait()
 }
 
 func handle(pub peanats.TypedPublisher[api.Result], req peanats.TypedRequest[api.Argument]) error {

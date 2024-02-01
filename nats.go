@@ -49,6 +49,10 @@ func (c *connectionImpl) ChanQueueSubscribe(subj, queue string, ch chan *nats.Ms
 	return &subscriptionImpl{sub}, nil
 }
 
+func (c *connectionImpl) QueueSubscribe(subj, queue string) (*nats.Subscription, error) {
+	return c.nc.QueueSubscribeSync(subj, queue)
+}
+
 type subscriptionImpl struct {
 	sub *nats.Subscription
 }

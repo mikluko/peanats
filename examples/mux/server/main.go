@@ -40,10 +40,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = srv.Wait()
-	if err != nil {
-		panic(err)
-	}
+
+	srv.Wait()
 }
 
 func handleFunc(prefix string) peanats.HandlerFunc {

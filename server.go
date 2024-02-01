@@ -4,10 +4,9 @@ import (
 	"context"
 	"errors"
 	"runtime"
-	"sync"
 
+	"github.com/alitto/pond"
 	"github.com/nats-io/nats.go"
-	"golang.org/x/sync/errgroup"
 )
 
 type Request interface {
@@ -36,24 +35,21 @@ type Server struct {
 	QueueName      string
 	ListenSubjects []string
 
-	ch       chan *nats.Msg
-	mux      sync.Mutex
-	grp      *errgroup.Group
-	ctx      context.Context
-	shutdown context.CancelFunc
+	pool *pond.WorkerPool
+	subs []Subscription
+	ch   chan *nats.Msg
+	done chan struct{}
 }
 
 func (s *Server) Start() error {
-	if !s.mux.TryLock() {
-		return errors.New("server is already running")
-	}
 	if s.Conn == nil {
-		s.mux.Unlock()
 		return errors.New("nats connection is not set")
 	}
 	if s.Handler == nil {
-		s.mux.Unlock()
 		return errors.New("handler is not set")
+	}
+	if len(s.ListenSubjects) == 0 {
+		return errors.New("no listen subjects")
 	}
 	if s.Concurrency == 0 {
 		s.Concurrency = runtime.NumCPU()*2 - 1
@@ -62,17 +58,18 @@ func (s *Server) Start() error {
 		s.BaseContext = context.Background()
 	}
 
-	s.ctx, s.shutdown = context.WithCancel(s.BaseContext)
-	s.grp, s.ctx = errgroup.WithContext(s.ctx)
-	s.ch = make(chan *nats.Msg, nats.DefaultMaxChanLen)
+	s.done = make(chan struct{})
+	s.ch = make(chan *nats.Msg)
+	s.pool = pond.New(s.Concurrency+1, 0, pond.MinWorkers(s.Concurrency+1))
+	s.pool.Submit(func() {
+		for msg := range s.ch {
+			s.pool.Submit(func() {
+				s.handle(msg)
+			})
+		}
+	})
 
-	for i := 0; i < s.Concurrency; i++ {
-		s.grp.Go(func() error {
-			return s.handleMsgLoop()
-		})
-	}
-
-	var subs []Subscription
+	s.subs = make([]Subscription, 0, len(s.ListenSubjects))
 	for _, subj := range s.ListenSubjects {
 		var (
 			sub Subscription
@@ -84,39 +81,31 @@ func (s *Server) Start() error {
 			sub, err = s.Conn.ChanQueueSubscribe(subj, s.QueueName, s.ch)
 		}
 		if err != nil {
-			for i := range subs {
-				_ = subs[i].Unsubscribe()
+			for i := range s.subs {
+				_ = s.subs[i].Unsubscribe()
 			}
 			return err
 		}
-		subs = append(subs, sub)
+		s.subs = append(s.subs, sub)
 	}
 
 	return nil
 }
 
-func (s *Server) Shutdown() error {
-	if s.mux.TryLock() {
-		s.mux.Unlock()
-		return errors.New("server is not running")
+func (s *Server) Shutdown() {
+	for i := range s.subs {
+		_ = s.subs[i].Unsubscribe()
 	}
-	s.grp.Go(func() error {
-		defer close(s.ch)
-		defer s.shutdown()
-		return s.Conn.Drain()
-	})
-	return nil
+	close(s.ch)
+	s.pool.StopAndWait()
+	close(s.done)
 }
 
-func (s *Server) Wait() error {
-	if s.mux.TryLock() {
-		s.mux.Unlock()
-		return errors.New("server is not running")
-	}
-	return s.grp.Wait()
+func (s *Server) Wait() {
+	<-s.done
 }
 
-func (s *Server) handleMsg(msg *nats.Msg) {
+func (s *Server) handle(msg *nats.Msg) {
 	rq := requestImpl{
 		msg: msg,
 	}
@@ -124,20 +113,6 @@ func (s *Server) handleMsg(msg *nats.Msg) {
 	err := s.Handler.Serve(&publisher{msgpub: s.Conn, msg: msg}, &rq)
 	if err != nil {
 		panic(err)
-	}
-}
-
-func (s *Server) handleMsgLoop() error {
-	for {
-		select {
-		case <-s.ctx.Done():
-			if errors.Is(s.ctx.Err(), context.Canceled) {
-				return nil
-			}
-			return s.ctx.Err()
-		case msg := <-s.ch:
-			s.handleMsg(msg)
-		}
 	}
 }
 
@@ -149,16 +124,6 @@ type requestImpl struct {
 
 func (r *requestImpl) Context() context.Context {
 	return r.ctx
-}
-
-func (r *requestImpl) WithContext(ctx context.Context) Request {
-	if ctx == nil {
-		panic("nil context")
-	}
-	r2 := new(requestImpl)
-	*r2 = *r
-	r2.ctx, r2.done = context.WithCancel(ctx)
-	return r2
 }
 
 func (r *requestImpl) Subject() string {
