@@ -8,7 +8,7 @@ import (
 
 // MakeAckMiddleware makes a middleware that sends a message before passing control down to the handler. That might be
 // beneficial for scenarios where client wants to immediately receive confirmation that request is being processed.
-func MakeAckMiddleware(msgpub MsgPublisher, opts ...AckMiddlewareOption) Middleware {
+func MakeAckMiddleware(msgpub PublisherMsg, opts ...AckMiddlewareOption) Middleware {
 	return func(next Handler) Handler {
 		return HandlerFunc(func(pub Publisher, req Request) error {
 			msg := nats.NewMsg(req.Reply())

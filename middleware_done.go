@@ -8,7 +8,7 @@ import (
 // calling party that it shouldn't expect further messages in a case where handler sends multiple responses. Done won't
 // be sent in case handler returns error. Consider wrapping handler with ErrorHandlerMiddleware deeper in the chain
 // in case that isn't the desired behavior.
-func MakeDoneMiddleware(msgpub MsgPublisher, opts ...DoneMiddlewareOption) Middleware {
+func MakeDoneMiddleware(msgpub PublisherMsg, opts ...DoneMiddlewareOption) Middleware {
 	return func(next Handler) Handler {
 		return HandlerFunc(func(pub Publisher, req Request) error {
 			err := next.Serve(pub, req)

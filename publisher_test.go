@@ -18,8 +18,8 @@ func TestPublisher(t *testing.T) {
 	}).Return(nil)
 
 	p := publisher{
-		msg:    &nats.Msg{Reply: "the.parson.had.a.dog"},
-		msgpub: &m,
+		PublisherMsg: &m,
+		subject:      "the.parson.had.a.dog",
 	}
 	p.Header().Add("the-parson", "had a dog")
 	err := p.Publish([]byte("the parson had a dog"))

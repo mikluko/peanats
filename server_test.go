@@ -45,7 +45,7 @@ func TestServer(t *testing.T) {
 		Handler: ChainMiddleware(HandlerFunc(func(pub Publisher, req Request) error {
 			require.Equal(t, []byte("test"), req.Data())
 			return pub.Publish([]byte("test"))
-		}), MakePublishSubjectMiddleware(NATS(nc), "test.results")),
+		}), MakePublishSubjectMiddleware("test.results")),
 	}
 	err = srv.Start()
 	require.NoError(t, err)
@@ -76,6 +76,11 @@ func (p *publisherMock) Header() *nats.Header {
 
 func (p *publisherMock) Publish(data []byte) error {
 	args := p.Called(data)
+	return args.Error(0)
+}
+
+func (p *publisherMock) PublishMsg(msg *nats.Msg) error {
+	args := p.Called(msg)
 	return args.Error(0)
 }
 

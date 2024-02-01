@@ -2,12 +2,12 @@ package peanats
 
 import "github.com/nats-io/nats.go"
 
-type MsgPublisher interface {
+type PublisherMsg interface {
 	PublishMsg(msg *nats.Msg) error
 }
 
 type Connection interface {
-	MsgPublisher
+	PublisherMsg
 	ChanSubscribe(subj string, ch chan *nats.Msg) (Subscription, error)
 	ChanQueueSubscribe(subj, queue string, ch chan *nats.Msg) (Subscription, error)
 	Drain() error

@@ -110,7 +110,7 @@ func (s *Server) handle(msg *nats.Msg) {
 		msg: msg,
 	}
 	rq.ctx, rq.done = context.WithCancel(s.BaseContext)
-	err := s.Handler.Serve(&publisher{msgpub: s.Conn, msg: msg}, &rq)
+	err := s.Handler.Serve(&publisher{PublisherMsg: s.Conn, subject: msg.Reply}, &rq)
 	if err != nil {
 		panic(err)
 	}

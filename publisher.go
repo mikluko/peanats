@@ -8,19 +8,22 @@ import (
 )
 
 type Publisher interface {
+	PublisherMsg
 	Header() *nats.Header
 	Publish(data []byte) error
 }
 
 type publisher struct {
-	header nats.Header
-	msgpub MsgPublisher
-	msg    *nats.Msg
-	once   sync.Once
+	PublisherMsg
+	subject string
+	header  nats.Header
+	once    sync.Once
 }
 
 func (p *publisher) init() {
-	p.header = make(nats.Header)
+	if p.header == nil {
+		p.header = make(nats.Header)
+	}
 }
 
 func (p *publisher) Header() *nats.Header {
@@ -30,28 +33,13 @@ func (p *publisher) Header() *nats.Header {
 
 func (p *publisher) Publish(data []byte) error {
 	p.once.Do(p.init)
-	if p.msg.Reply == "" {
+	if p.subject == "" {
 		return errors.New("reply subject is not set")
 	}
 	msg := nats.Msg{
-		Subject: p.msg.Reply,
+		Subject: p.subject,
 		Header:  p.header,
 		Data:    data,
 	}
-	return p.msgpub.PublishMsg(&msg)
-}
-
-type subjectPublisher struct {
-	Publisher
-	msgpub  MsgPublisher
-	subject string
-}
-
-func (p *subjectPublisher) Publish(data []byte) error {
-	msg := nats.Msg{
-		Subject: p.subject,
-		Header:  *p.Header(),
-		Data:    data,
-	}
-	return p.msgpub.PublishMsg(&msg)
+	return p.PublishMsg(&msg)
 }
