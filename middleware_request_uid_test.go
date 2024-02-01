@@ -20,13 +20,13 @@ func (t *uidGeneratorMock) Next() string {
 
 func TestEnsureUIDMiddleware(t *testing.T) {
 	req := new(requestMock)
-	//defer req.AssertExpectations(t)
+	defer req.AssertExpectations(t)
 
 	pub := new(publisherMock)
-	//defer pub.AssertExpectations(t)
+	defer pub.AssertExpectations(t)
 
 	gen := new(uidGeneratorMock)
-	//defer gen.AssertExpectations(t)
+	defer gen.AssertExpectations(t)
 
 	uid := nuid.Next()
 	gen.On("Next").Return(uid)
@@ -39,11 +39,10 @@ func TestEnsureUIDMiddleware(t *testing.T) {
 	f = ChainMiddleware(f, MakeRequestUIDMiddleware(gen))
 
 	reqHeader := make(nats.Header)
-	req.On("Header").Return(&reqHeader)
+	req.On("Header").Return(reqHeader)
 
 	pubHeader := make(nats.Header)
 	pub.On("Header").Return(&pubHeader)
-	pub.On("Ack", mock.Anything).Return(nil)
 	pub.On("Publish", mock.Anything).Return(nil)
 
 	err := f.Serve(pub, req)
