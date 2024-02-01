@@ -173,7 +173,6 @@ func (r *requestImpl) Subject() string {
 }
 
 func (r *requestImpl) Reply() string {
-	_ = r.msg.Respond(nil)
 	return r.msg.Reply
 }
 
