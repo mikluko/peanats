@@ -2,14 +2,16 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"github.com/mikluko/peanats/examples/protojson/api"
-	"github.com/nats-io/nats.go"
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/protobuf/encoding/protojson"
+	"log"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/nats-io/nats.go"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/protobuf/encoding/protojson"
+
+	"github.com/mikluko/peanats/examples/protojson/api"
 )
 
 func main() {
@@ -73,7 +75,7 @@ func observer(ctx context.Context, nc *nats.Conn) error {
 			if err != nil {
 				panic(err)
 			}
-			fmt.Println(seq, res.String())
+			log.Println(seq, res.String())
 		}
 	}
 }

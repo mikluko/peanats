@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
-	"github.com/nats-io/nats.go"
-	"golang.org/x/sync/errgroup"
+	"log"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/nats-io/nats.go"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -67,7 +69,7 @@ func observer(ctx context.Context, nc *nats.Conn) error {
 			return nil
 		case msg := <-ch:
 			seq++
-			println(seq, string(msg.Data))
+			log.Println(seq, string(msg.Data))
 		}
 	}
 }

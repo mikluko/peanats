@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/mikluko/peanats"
 	"github.com/nats-io/nats.go"
+
+	"github.com/mikluko/peanats"
 )
 
 func main() {
@@ -14,9 +15,10 @@ func main() {
 
 	srv := peanats.Server{
 		ListenSubjects: []string{"peanuts.simple.requests"},
-		Conn:           nc,
+		Conn:           peanats.NATS(nc),
 		Handler: peanats.ChainMiddleware(
 			peanats.HandlerFunc(handle),
+			peanats.MakeAckMiddleware(nc, peanats.AckMiddlewareWithPayload([]byte("ACK"))),
 			peanats.MakePublishSubjectMiddleware(nc, "peanuts.simple.results"),
 		),
 	}
@@ -32,11 +34,5 @@ func main() {
 }
 
 func handle(pub peanats.Publisher, req peanats.Request) error {
-	if ack, ok := pub.(peanats.Acker); ok {
-		err := ack.Ack(nil)
-		if err != nil {
-			return err
-		}
-	}
 	return pub.Publish(req.Data())
 }

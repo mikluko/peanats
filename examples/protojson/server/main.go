@@ -19,9 +19,10 @@ func main() {
 	hnd := peanats.TypedHandler[api.Argument, api.Result](peanats.TypedHandlerFunc[api.Argument, api.Result](handle))
 	srv := peanats.Server{
 		ListenSubjects: []string{"peanuts.protojson.requests"},
-		Conn:           nc,
+		Conn:           peanats.NATS(nc),
 		Handler: peanats.ChainMiddleware(
 			peanats.Typed(&peanats.ProtojsonCodec{}, hnd),
+			peanats.MakeAckMiddleware(nc, peanats.AckMiddlewareWithPayload([]byte("ACK"))),
 			peanats.MakePublishSubjectMiddleware(nc, "peanuts.protojson.results"),
 			peanats.MakeAccessLogMiddleware(os.Stdout),
 		),

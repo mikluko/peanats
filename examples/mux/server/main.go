@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
-	"github.com/mikluko/peanats"
-	"github.com/nats-io/nats.go"
 	"math/rand"
+	"os"
 	"time"
+
+	"github.com/nats-io/nats.go"
+
+	"github.com/mikluko/peanats"
 )
 
 func main() {
@@ -24,11 +27,13 @@ func main() {
 		peanats.ChainMiddleware(handleFunc("handle B:"), peanats.MakePublishSubjectMiddleware(nc, "peanuts.mux.results.b")),
 		"peanuts.mux.requests.b",
 	)
-
 	srv := peanats.Server{
 		ListenSubjects: []string{"peanuts.mux.requests.>"},
-		Conn:           nc,
-		Handler:        mux,
+		Conn:           peanats.NATS(nc),
+		Handler: peanats.ChainMiddleware(mux,
+			peanats.MakeAccessLogMiddleware(os.Stderr),
+			peanats.MakeAckMiddleware(nc, peanats.AckMiddlewareWithPayload([]byte("ACK"))),
+		),
 	}
 
 	err = srv.Start()
@@ -43,12 +48,6 @@ func main() {
 
 func handleFunc(prefix string) peanats.HandlerFunc {
 	return func(pub peanats.Publisher, req peanats.Request) error {
-		if ack, ok := pub.(peanats.Acker); ok {
-			err := ack.Ack(nil)
-			if err != nil {
-				return err
-			}
-		}
 		buf := new(bytes.Buffer)
 		buf.WriteString(prefix)
 		buf.WriteString(": ")
