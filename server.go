@@ -12,10 +12,9 @@ import (
 
 type Request interface {
 	Context() context.Context
-	WithContext(ctx context.Context) Request
 	Subject() string
 	Reply() string
-	Header() *nats.Header
+	Header() nats.Header
 	Data() []byte
 }
 
@@ -121,11 +120,6 @@ func (s *Server) handleMsg(msg *nats.Msg) {
 	rq := requestImpl{
 		msg: msg,
 	}
-	if msg.Header == nil {
-		rq.header = make(nats.Header)
-	} else {
-		rq.header = msg.Header
-	}
 	rq.ctx, rq.done = context.WithCancel(s.BaseContext)
 	err := s.Handler.Serve(&publisher{msgpub: s.Conn, msg: msg}, &rq)
 	if err != nil {
@@ -148,10 +142,9 @@ func (s *Server) handleMsgLoop() error {
 }
 
 type requestImpl struct {
-	ctx    context.Context
-	done   context.CancelFunc
-	msg    *nats.Msg
-	header nats.Header
+	ctx  context.Context
+	done context.CancelFunc
+	msg  *nats.Msg
 }
 
 func (r *requestImpl) Context() context.Context {
@@ -176,8 +169,8 @@ func (r *requestImpl) Reply() string {
 	return r.msg.Reply
 }
 
-func (r *requestImpl) Header() *nats.Header {
-	return &r.header
+func (r *requestImpl) Header() nats.Header {
+	return r.msg.Header
 }
 
 func (r *requestImpl) Data() []byte {

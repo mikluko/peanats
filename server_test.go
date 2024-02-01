@@ -91,11 +91,6 @@ func (r *requestMock) Context() context.Context {
 	return args.Get(0).(context.Context)
 }
 
-func (r *requestMock) WithContext(ctx context.Context) Request {
-	args := r.Mock.Called(ctx)
-	return args.Get(0).(Request)
-}
-
 func (r *requestMock) Subject() string {
 	args := r.Mock.Called()
 	return args.Get(0).(string)
@@ -106,9 +101,9 @@ func (r *requestMock) Reply() string {
 	return args.Get(0).(string)
 }
 
-func (r *requestMock) Header() *nats.Header {
+func (r *requestMock) Header() nats.Header {
 	args := r.Mock.Called()
-	return args.Get(0).(*nats.Header)
+	return args.Get(0).(nats.Header)
 }
 
 func (r *requestMock) Data() []byte {

@@ -13,7 +13,7 @@ import (
 
 type TypedRequest[T any] interface {
 	Context() context.Context
-	Header() *nats.Header
+	Header() nats.Header
 	Payload() *T
 }
 
@@ -55,7 +55,7 @@ func (r *typedRequestImpl[ArgT]) Context() context.Context {
 	return r.req.Context()
 }
 
-func (r *typedRequestImpl[ArgT]) Header() *nats.Header {
+func (r *typedRequestImpl[ArgT]) Header() nats.Header {
 	return r.req.Header()
 }
 
