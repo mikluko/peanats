@@ -35,7 +35,6 @@ func TestPublishSubjectMiddleware(t *testing.T) {
 	pub.On("Header").Return(&nats.Header{
 		"test-header": []string{"test-value"},
 	})
-	pub.On("Publish", []byte("test")).Return(nil)
 
 	sub, err := nc.SubscribeSync("test.results")
 	_ = sub.AutoUnsubscribe(1)

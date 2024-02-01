@@ -127,7 +127,7 @@ func (s *Server) handleMsg(msg *nats.Msg) {
 		rq.header = msg.Header
 	}
 	rq.ctx, rq.done = context.WithCancel(s.BaseContext)
-	err := s.Handler.Serve(&publisher{pub: s.Conn, msg: msg}, &rq)
+	err := s.Handler.Serve(&publisher{msgpub: s.Conn, msg: msg}, &rq)
 	if err != nil {
 		panic(err)
 	}
