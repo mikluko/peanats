@@ -8,7 +8,7 @@ import (
 )
 
 func TestPublisher(t *testing.T) {
-	m := msgPublisherMock{}
+	m := publisherMock{}
 	m.On("PublishMsg", &nats.Msg{
 		Subject: "the.parson.had.a.dog",
 		Header: nats.Header{

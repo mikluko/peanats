@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMakeAckMiddleware(t *testing.T) {
+func TestAckMiddleware(t *testing.T) {
 	t.Run("pristine", func(t *testing.T) {
 		inbox := nats.NewInbox()
 
-		msgpub := new(msgPublisherMock)
-		msgpub.On("PublishMsg", mock.Anything).Run(func(args mock.Arguments) {
+		pub := new(publisherMock)
+		pub.On("PublishMsg", mock.Anything).Run(func(args mock.Arguments) {
 			msg := args.Get(0).(*nats.Msg)
 			require.Equal(t, inbox, msg.Subject)
 			require.Len(t, msg.Header, 0)
@@ -23,11 +23,13 @@ func TestMakeAckMiddleware(t *testing.T) {
 		rq := new(requestMock)
 		rq.On("Reply").Return(inbox)
 
-		mw := MakeAckMiddleware(msgpub)
-		h := mw(HandlerFunc(func(_ Publisher, _ Request) error {
-			return nil
-		}))
-		err := h.Serve(&publisherMock{}, rq)
+		h := ChainMiddleware(
+			HandlerFunc(func(_ Publisher, _ Request) error {
+				return nil
+			}),
+			MakeAckMiddleware(),
+		)
+		err := h.Serve(pub, rq)
 		require.NoError(t, err)
 	})
 
@@ -35,8 +37,8 @@ func TestMakeAckMiddleware(t *testing.T) {
 		inbox := nats.NewInbox()
 		payload := []byte("the parson had a dog")
 
-		msgpub := new(msgPublisherMock)
-		msgpub.On("PublishMsg", mock.Anything).Run(func(args mock.Arguments) {
+		pub := new(publisherMock)
+		pub.On("PublishMsg", mock.Anything).Run(func(args mock.Arguments) {
 			msg := args.Get(0).(*nats.Msg)
 			require.Equal(t, inbox, msg.Subject)
 			require.Len(t, msg.Header, 0)
@@ -46,11 +48,13 @@ func TestMakeAckMiddleware(t *testing.T) {
 		rq := new(requestMock)
 		rq.On("Reply").Return(inbox)
 
-		mw := MakeAckMiddleware(msgpub, AckMiddlewareWithPayload(payload))
-		h := mw(HandlerFunc(func(_ Publisher, _ Request) error {
-			return nil
-		}))
-		err := h.Serve(&publisherMock{}, rq)
+		h := ChainMiddleware(
+			HandlerFunc(func(_ Publisher, _ Request) error {
+				return nil
+			}),
+			MakeAckMiddleware(AckMiddlewareWithPayload(payload)),
+		)
+		err := h.Serve(pub, rq)
 		require.NoError(t, err)
 	})
 
@@ -60,8 +64,8 @@ func TestMakeAckMiddleware(t *testing.T) {
 			"the-parson": []string{"had", "a", "dog"},
 		}
 
-		msgpub := new(msgPublisherMock)
-		msgpub.On("PublishMsg", mock.Anything).Run(func(args mock.Arguments) {
+		pub := new(publisherMock)
+		pub.On("PublishMsg", mock.Anything).Run(func(args mock.Arguments) {
 			msg := args.Get(0).(*nats.Msg)
 			require.Equal(t, inbox, msg.Subject)
 			require.Equal(t, msg.Header, header)
@@ -71,11 +75,38 @@ func TestMakeAckMiddleware(t *testing.T) {
 		rq := new(requestMock)
 		rq.On("Reply").Return(inbox)
 
-		mw := MakeAckMiddleware(msgpub, AckMiddlewareWithHeader(header))
-		h := mw(HandlerFunc(func(_ Publisher, _ Request) error {
-			return nil
-		}))
-		err := h.Serve(&publisherMock{}, rq)
+		h := ChainMiddleware(
+			HandlerFunc(func(_ Publisher, _ Request) error {
+				return nil
+			}),
+			MakeAckMiddleware(AckMiddlewareWithHeader(header)),
+		)
+		err := h.Serve(pub, rq)
+		require.NoError(t, err)
+	})
+
+	t.Run("with subject", func(t *testing.T) {
+		inbox := nats.NewInbox()
+		subject := "the.parson.had.a.dog"
+
+		pub := new(publisherMock)
+		pub.On("PublishMsg", mock.Anything).Run(func(args mock.Arguments) {
+			msg := args.Get(0).(*nats.Msg)
+			require.Equal(t, subject, msg.Subject)
+			require.Equal(t, msg.Header, nats.Header{})
+			require.Len(t, msg.Data, 0)
+		}).Return(nil).Once()
+
+		rq := new(requestMock)
+		rq.On("Reply").Return(inbox)
+
+		h := ChainMiddleware(
+			HandlerFunc(func(_ Publisher, _ Request) error {
+				return nil
+			}),
+			MakeAckMiddleware(AckMiddlewareWithSubject(subject)),
+		)
+		err := h.Serve(pub, rq)
 		require.NoError(t, err)
 	})
 }

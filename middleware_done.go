@@ -8,7 +8,7 @@ import (
 // calling party that it shouldn't expect further messages in a case where handler sends multiple responses. Done won't
 // be sent in case handler returns error. Consider wrapping handler with ErrorHandlerMiddleware deeper in the chain
 // in case that isn't the desired behavior.
-func MakeDoneMiddleware(msgpub PublisherMsg, opts ...DoneMiddlewareOption) Middleware {
+func MakeDoneMiddleware(opts ...DoneMiddlewareOption) Middleware {
 	return func(next Handler) Handler {
 		return HandlerFunc(func(pub Publisher, req Request) error {
 			err := next.Serve(pub, req)
@@ -20,7 +20,7 @@ func MakeDoneMiddleware(msgpub PublisherMsg, opts ...DoneMiddlewareOption) Middl
 				opts[i](msg)
 			}
 			if msg.Subject != "" {
-				err = msgpub.PublishMsg(msg)
+				err = pub.PublishMsg(msg)
 			}
 			return err
 		})
@@ -44,5 +44,12 @@ func DoneMiddlewareWithHeader(header nats.Header) DoneMiddlewareOption {
 				msg.Header.Add(key, value)
 			}
 		}
+	}
+}
+
+// DoneMiddlewareWithSubject option configures subject for the done message
+func DoneMiddlewareWithSubject(subject string) DoneMiddlewareOption {
+	return func(msg *nats.Msg) {
+		msg.Subject = subject
 	}
 }

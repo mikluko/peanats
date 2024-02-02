@@ -8,7 +8,7 @@ import (
 
 // MakeAckMiddleware makes a middleware that sends a message before passing control down to the handler. That might be
 // beneficial for scenarios where client wants to immediately receive confirmation that request is being processed.
-func MakeAckMiddleware(msgpub PublisherMsg, opts ...AckMiddlewareOption) Middleware {
+func MakeAckMiddleware(opts ...AckMiddlewareOption) Middleware {
 	return func(next Handler) Handler {
 		return HandlerFunc(func(pub Publisher, req Request) error {
 			msg := nats.NewMsg(req.Reply())
@@ -16,7 +16,7 @@ func MakeAckMiddleware(msgpub PublisherMsg, opts ...AckMiddlewareOption) Middlew
 				opts[i](msg)
 			}
 			if msg.Subject != "" {
-				err := msgpub.PublishMsg(msg)
+				err := pub.PublishMsg(msg)
 				if err != nil {
 					return &Error{
 						Code:    http.StatusInternalServerError,
@@ -47,5 +47,12 @@ func AckMiddlewareWithHeader(header nats.Header) AckMiddlewareOption {
 				msg.Header.Add(key, value)
 			}
 		}
+	}
+}
+
+// AckMiddlewareWithSubject option configures subject for the done message
+func AckMiddlewareWithSubject(subject string) AckMiddlewareOption {
+	return func(msg *nats.Msg) {
+		msg.Subject = subject
 	}
 }
