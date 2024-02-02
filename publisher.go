@@ -9,6 +9,7 @@ import (
 
 type Publisher interface {
 	PublisherMsg
+	Subject() string
 	Header() *nats.Header
 	Publish(data []byte) error
 }
@@ -24,6 +25,11 @@ func (p *publisher) init() {
 	if p.header == nil {
 		p.header = make(nats.Header)
 	}
+}
+
+func (p *publisher) Subject() string {
+	p.once.Do(p.init)
+	return p.subject
 }
 
 func (p *publisher) Header() *nats.Header {
