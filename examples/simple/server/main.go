@@ -18,8 +18,8 @@ func main() {
 		Conn:           peanats.NATS(nc),
 		Handler: peanats.ChainMiddleware(
 			peanats.HandlerFunc(handle),
-			peanats.MakeAckMiddleware(nc, peanats.AckMiddlewareWithPayload([]byte("ACK"))),
-			peanats.MakePublishSubjectMiddleware(nc, "peanuts.simple.results"),
+			peanats.MakeAckMiddleware(peanats.AckMiddlewareWithPayload([]byte("ACK"))),
+			peanats.MakePublishSubjectMiddleware("peanuts.simple.results"),
 		),
 	}
 

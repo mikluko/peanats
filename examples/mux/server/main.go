@@ -20,11 +20,11 @@ func main() {
 
 	mux := new(peanats.ServeMux)
 	_ = mux.Handle(
-		peanats.ChainMiddleware(handleFunc("handle A:"), peanats.MakePublishSubjectMiddleware(nc, "peanuts.mux.results.a")),
+		peanats.ChainMiddleware(handleFunc("handle A:"), peanats.MakePublishSubjectMiddleware("peanuts.mux.results.a")),
 		"peanuts.mux.requests.a",
 	)
 	_ = mux.Handle(
-		peanats.ChainMiddleware(handleFunc("handle B:"), peanats.MakePublishSubjectMiddleware(nc, "peanuts.mux.results.b")),
+		peanats.ChainMiddleware(handleFunc("handle B:"), peanats.MakePublishSubjectMiddleware("peanuts.mux.results.b")),
 		"peanuts.mux.requests.b",
 	)
 	srv := peanats.Server{
@@ -32,7 +32,7 @@ func main() {
 		Conn:           peanats.NATS(nc),
 		Handler: peanats.ChainMiddleware(mux,
 			peanats.MakeAccessLogMiddleware(os.Stderr),
-			peanats.MakeAckMiddleware(nc, peanats.AckMiddlewareWithPayload([]byte("ACK"))),
+			peanats.MakeAckMiddleware(peanats.AckMiddlewareWithPayload([]byte("ACK"))),
 		),
 	}
 

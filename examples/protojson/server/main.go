@@ -22,8 +22,8 @@ func main() {
 		Conn:           peanats.NATS(nc),
 		Handler: peanats.ChainMiddleware(
 			peanats.Typed(&peanats.ProtojsonCodec{}, hnd),
-			peanats.MakeAckMiddleware(nc, peanats.AckMiddlewareWithPayload([]byte("ACK"))),
-			peanats.MakePublishSubjectMiddleware(nc, "peanuts.protojson.results"),
+			peanats.MakeAckMiddleware(peanats.AckMiddlewareWithPayload([]byte("ACK"))),
+			peanats.MakePublishSubjectMiddleware("peanuts.protojson.results"),
 			peanats.MakeAccessLogMiddleware(os.Stdout),
 		),
 	}
