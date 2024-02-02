@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"math/rand"
-	"os"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -31,7 +30,7 @@ func main() {
 		ListenSubjects: []string{"peanuts.mux.requests.>"},
 		Conn:           peanats.NATS(nc),
 		Handler: peanats.ChainMiddleware(mux,
-			peanats.MakeAccessLogMiddleware(os.Stderr),
+			peanats.MakeAccessLogMiddleware(),
 			peanats.MakeAckMiddleware(peanats.AckMiddlewareWithPayload([]byte("ACK"))),
 		),
 	}

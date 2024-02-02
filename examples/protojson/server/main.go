@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-
 	"github.com/nats-io/nats.go"
 
 	"github.com/mikluko/peanats"
@@ -22,9 +20,9 @@ func main() {
 		Conn:           peanats.NATS(nc),
 		Handler: peanats.ChainMiddleware(
 			peanats.Typed(&peanats.ProtojsonCodec{}, hnd),
+			peanats.MakeAccessLogMiddleware(),
 			peanats.MakeAckMiddleware(peanats.AckMiddlewareWithPayload([]byte("ACK"))),
 			peanats.MakePublishSubjectMiddleware("peanuts.protojson.results"),
-			peanats.MakeAccessLogMiddleware(os.Stdout),
 		),
 	}
 
