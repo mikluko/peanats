@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"google.golang.org/protobuf/encoding/prototext"
 	"net/http"
 
 	"github.com/nats-io/nats.go"
@@ -99,6 +100,22 @@ func (JsonCodec) Decode(data []byte, vPtr any) error {
 	return json.Unmarshal(data, vPtr)
 }
 
+type ProtoCodec struct{}
+
+func (ProtoCodec) Encode(v any) ([]byte, error) {
+	if msg, ok := v.(proto.Message); ok {
+		return proto.Marshal(msg)
+	}
+	return nil, fmt.Errorf("%T is not a proto.Message", v)
+}
+
+func (ProtoCodec) Decode(data []byte, vPtr any) error {
+	if msg, ok := vPtr.(proto.Message); ok {
+		return proto.Unmarshal(data, msg)
+	}
+	return fmt.Errorf("%T is not a proto.Message", vPtr)
+}
+
 type ProtojsonCodec struct{}
 
 func (ProtojsonCodec) Encode(v any) ([]byte, error) {
@@ -111,6 +128,22 @@ func (ProtojsonCodec) Encode(v any) ([]byte, error) {
 func (ProtojsonCodec) Decode(data []byte, vPtr any) error {
 	if msg, ok := vPtr.(proto.Message); ok {
 		return protojson.Unmarshal(data, msg)
+	}
+	return fmt.Errorf("%T is not a proto.Message", vPtr)
+}
+
+type PrototextCodec struct{}
+
+func (PrototextCodec) Encode(v any) ([]byte, error) {
+	if msg, ok := v.(proto.Message); ok {
+		return prototext.Marshal(msg)
+	}
+	return nil, fmt.Errorf("%T is not a proto.Message", v)
+}
+
+func (PrototextCodec) Decode(data []byte, vPtr any) error {
+	if msg, ok := vPtr.(proto.Message); ok {
+		return prototext.Unmarshal(data, msg)
 	}
 	return fmt.Errorf("%T is not a proto.Message", vPtr)
 }
