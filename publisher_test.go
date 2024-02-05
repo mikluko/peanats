@@ -42,7 +42,7 @@ func TestPublisher(t *testing.T) {
 		Data: []byte("the parson had a dog"),
 	}).Return(nil)
 
-	p := publisher{
+	p := publisherImpl{
 		PublisherMsg: &m,
 		subject:      "the.parson.had.a.dog",
 	}

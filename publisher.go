@@ -14,30 +14,30 @@ type Publisher interface {
 	Publish(data []byte) error
 }
 
-type publisher struct {
+type publisherImpl struct {
 	PublisherMsg
 	subject string
 	header  nats.Header
 	once    sync.Once
 }
 
-func (p *publisher) init() {
+func (p *publisherImpl) init() {
 	if p.header == nil {
 		p.header = make(nats.Header)
 	}
 }
 
-func (p *publisher) Subject() string {
+func (p *publisherImpl) Subject() string {
 	p.once.Do(p.init)
 	return p.subject
 }
 
-func (p *publisher) Header() *nats.Header {
+func (p *publisherImpl) Header() *nats.Header {
 	p.once.Do(p.init)
 	return &p.header
 }
 
-func (p *publisher) Publish(data []byte) error {
+func (p *publisherImpl) Publish(data []byte) error {
 	p.once.Do(p.init)
 	if p.subject == "" {
 		return errors.New("reply subject is not set")
