@@ -40,7 +40,7 @@ func requester(ctx context.Context, nc *nats.Conn) error {
 		case <-ctx.Done():
 			return nil
 		case <-t.C:
-			_, err := nc.RequestWithContext(ctx, "peanuts.simple.requests", []byte(time.Now().String()))
+			err := nc.Publish("peanuts.simple.requests", []byte(time.Now().String()))
 			if err != nil {
 				return err
 			}

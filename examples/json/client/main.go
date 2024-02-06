@@ -48,7 +48,7 @@ func requester(ctx context.Context, nc *nats.Conn) error {
 			if err != nil {
 				panic(err)
 			}
-			_, err = nc.RequestWithContext(ctx, "peanuts.json.requests", data)
+			err = nc.Publish("peanuts.json.requests", data)
 			if err != nil {
 				return err
 			}

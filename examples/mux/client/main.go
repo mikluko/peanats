@@ -46,7 +46,7 @@ func requesterFunc(prefix, subj string) func(ctx context.Context, nc *nats.Conn)
 			case <-ctx.Done():
 				return nil
 			case <-t.C:
-				_, err := nc.RequestWithContext(ctx, subj, []byte(prefix+time.Now().String()))
+				err := nc.Publish(subj, []byte(prefix+time.Now().String()))
 				if err != nil {
 					return err
 				}

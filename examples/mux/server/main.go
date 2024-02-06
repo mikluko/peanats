@@ -31,7 +31,6 @@ func main() {
 		Conn:           peanats.NATS(nc),
 		Handler: peanats.ChainMiddleware(mux,
 			peanats.MakeAccessLogMiddleware(),
-			peanats.MakeAckMiddleware(peanats.AckMiddlewareWithPayload([]byte("ACK"))),
 		),
 	}
 
