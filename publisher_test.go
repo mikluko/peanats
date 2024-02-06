@@ -17,6 +17,11 @@ func (p *publisherMock) Subject() string {
 	return args.String(0)
 }
 
+func (p *publisherMock) WithSubject(subj string) Publisher {
+	args := p.Called(subj)
+	return args.Get(0).(Publisher)
+}
+
 func (p *publisherMock) Header() *nats.Header {
 	args := p.Called()
 	return args.Get(0).(*nats.Header)

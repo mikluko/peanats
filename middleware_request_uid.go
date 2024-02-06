@@ -27,6 +27,10 @@ type requestUIDPublisher struct {
 	uid string
 }
 
+func (p *requestUIDPublisher) WithSubject(subject string) Publisher {
+	return &requestUIDPublisher{p.Publisher.WithSubject(subject), p.uid}
+}
+
 func (p *requestUIDPublisher) Publish(data []byte) error {
 	if p.Header().Get(HeaderRequestUID) == "" {
 		p.Header().Set(HeaderRequestUID, p.uid)

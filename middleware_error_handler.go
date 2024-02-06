@@ -23,3 +23,9 @@ func ErrorHandlerMiddleware(next Handler) Handler {
 type errorHandlerPublisher struct {
 	Publisher
 }
+
+func (p *errorHandlerPublisher) WithSubject(subject string) Publisher {
+	return &errorHandlerPublisher{
+		Publisher: p.Publisher.WithSubject(subject),
+	}
+}

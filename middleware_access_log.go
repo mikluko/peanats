@@ -67,6 +67,12 @@ type loggingPublisher struct {
 	hasPublished bool
 }
 
+func (p *loggingPublisher) WithSubject(subj string) Publisher {
+	q := *p
+	q.Publisher = p.Publisher.WithSubject(subj)
+	return &q
+}
+
 func (p *loggingPublisher) Publish(data []byte) error {
 	p.hasPublished = true
 	err := p.Publisher.Publish(data)

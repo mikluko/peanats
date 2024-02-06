@@ -1,18 +1,19 @@
-package peanats
+package stream
 
 import (
+	"github.com/mikluko/peanats"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nuid"
 	"net/http"
 	"strconv"
 )
 
-// StreamMiddleware is a middleware that forms publications from the handler into a stream of messages.
+// Middleware is a middleware that forms handler publication into a stream of messages.
 //
 // 1. As a first step, it sends an message to the original reply subject containing the subject of the stream.
 // 2. All subsequent messages published from inner handler are sent to the stream subject.
 // 3. When the handler returns, middleware sends an empty message to the stream subject marking the end of the stream.
-func StreamMiddleware(next Handler) Handler {
+func Middleware(next peanats.Handler) peanats.Handler {
 
 	uid := nuid.Next()
 
@@ -43,12 +44,12 @@ const (
 type streamHandler struct {
 	uid  string
 	subj string
-	next Handler
+	next peanats.Handler
 }
 
-func (h *streamHandler) ack(pub Publisher, rq Request) error {
+func (h *streamHandler) ack(pub peanats.Publisher, rq peanats.Request) error {
 	if rq.Reply() == "" {
-		return &Error{
+		return &peanats.Error{
 			Code:    http.StatusBadRequest,
 			Message: "Reply subject is not set",
 		}
@@ -58,7 +59,7 @@ func (h *streamHandler) ack(pub Publisher, rq Request) error {
 	msg.Header.Add(HeaderStreamUID, h.uid)
 	err := pub.PublishMsg(msg)
 	if err != nil {
-		return &Error{
+		return &peanats.Error{
 			Code:    http.StatusInternalServerError,
 			Message: "Failed to publish ack",
 			Cause:   err,
@@ -67,13 +68,13 @@ func (h *streamHandler) ack(pub Publisher, rq Request) error {
 	return nil
 }
 
-func (h *streamHandler) done(pub Publisher) error {
+func (h *streamHandler) done(pub peanats.Publisher) error {
 	msg := nats.NewMsg(h.subj)
 	msg.Header.Add(HeaderStreamUID, h.uid)
 	msg.Header.Add(HeaderStreamControl, StreamControlDone)
 	err := pub.PublishMsg(msg)
 	if err != nil {
-		return &Error{
+		return &peanats.Error{
 			Code:    http.StatusInternalServerError,
 			Message: "Failed to publish done",
 			Cause:   err,
@@ -82,12 +83,12 @@ func (h *streamHandler) done(pub Publisher) error {
 	return nil
 }
 
-func (h *streamHandler) Serve(pub Publisher, rq Request) error {
+func (h *streamHandler) Serve(pub peanats.Publisher, rq peanats.Request) error {
 	err := h.ack(pub, rq)
 	if err != nil {
 		return err
 	}
-	pubstream := &streamPublisherImpl{Publisher: &publisherImpl{PublisherMsg: pub, subject: h.subj}}
+	pubstream := &streamPublisherImpl{pub.WithSubject(h.subj), 0, false}
 	pubstream.Header().Add(HeaderStreamUID, h.uid)
 	err = h.next.Serve(pubstream, rq)
 	if err != nil {
@@ -100,22 +101,27 @@ func (h *streamHandler) Serve(pub Publisher, rq Request) error {
 }
 
 type streamPublisherImpl struct {
-	Publisher
+	peanats.Publisher
 	seq  int
 	done bool
 }
 
+func (p *streamPublisherImpl) WithSubject(subject string) peanats.Publisher {
+	return &streamPublisherImpl{p.Publisher.WithSubject(subject), p.seq, p.done}
+}
+
 func (p *streamPublisherImpl) Publish(data []byte) error {
 	p.seq++
-	if p.Header().Get(HeaderStreamControl) != StreamControlDone {
-		p.Header().Set(HeaderStreamControl, StreamControlProceed)
-		defer p.Header().Del(HeaderStreamControl)
+	hdr := p.Header()
+	if hdr.Get(HeaderStreamControl) != StreamControlDone {
+		hdr.Set(HeaderStreamControl, StreamControlProceed)
+		defer hdr.Del(HeaderStreamControl)
 	} else {
 		p.done = true
 	}
 
-	p.Header().Set(HeaderStreamSequence, strconv.Itoa(p.seq))
-	defer p.Header().Del(HeaderStreamSequence)
+	hdr.Set(HeaderStreamSequence, strconv.Itoa(p.seq))
+	defer hdr.Del(HeaderStreamSequence)
 
 	return p.Publisher.Publish(data)
 }
