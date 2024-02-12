@@ -13,13 +13,13 @@ func TestAccessLogMiddleware(t *testing.T) {
 	t.Run("pub", func(t *testing.T) {
 		buf := bytes.NewBuffer(nil)
 
-		pub := PublisherMock{}
+		pub := publisherMock{}
 		pub.On("Publish", []byte("the parson had a dog")).Return(nil).Once()
 		pub.On("Subject").Return("had.a.dog").Once()
 		pub.On("Header").Return(&nats.Header{})
 		defer pub.AssertExpectations(t)
 
-		req := RequestMock{}
+		req := requestMock{}
 		req.On("Header").Return(nats.Header{
 			HeaderRequestUID: []string{"uid:xxxxxxxxxxxx"},
 		}).Once()
@@ -37,10 +37,10 @@ func TestAccessLogMiddleware(t *testing.T) {
 	t.Run("noop", func(t *testing.T) {
 		buf := bytes.NewBuffer(nil)
 
-		pub := PublisherMock{}
+		pub := publisherMock{}
 		defer pub.AssertExpectations(t)
 
-		req := RequestMock{}
+		req := requestMock{}
 		req.On("Header").Return(nats.Header{
 			HeaderRequestUID: []string{"uid:xxxxxxxxxxxx"},
 		}).Once()

@@ -36,7 +36,7 @@ type Server struct {
 	ListenSubjects []string
 
 	pool *pond.WorkerPool
-	subs []Subscription
+	subs []Unsubscriber
 	ch   chan *nats.Msg
 	done chan struct{}
 }
@@ -69,10 +69,10 @@ func (s *Server) Start() error {
 		}
 	})
 
-	s.subs = make([]Subscription, 0, len(s.ListenSubjects))
+	s.subs = make([]Unsubscriber, 0, len(s.ListenSubjects))
 	for _, subj := range s.ListenSubjects {
 		var (
-			sub Subscription
+			sub Unsubscriber
 			err error
 		)
 		if s.QueueName == "" {

@@ -6,6 +6,7 @@ toolchain go1.21.6
 
 require (
 	github.com/alitto/pond v1.8.3
+	github.com/mikluko/newopt v0.1.1
 	github.com/nats-io/nats-server/v2 v2.10.9
 	github.com/nats-io/nats.go v1.32.0
 	github.com/nats-io/nuid v1.0.1
