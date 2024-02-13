@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/mikluko/newopt"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nuid"
 
@@ -21,10 +20,15 @@ func NewClient(conn peanats.Connection, opts ...ClientOption) Client {
 		withConn(conn),
 		WithReplySubjecter(ReplySubjectNUID()),
 	}
-	return newopt.NewP[clientImpl](append(defaults, opts...)...)
+	opts = append(defaults, opts...)
+	c := &clientImpl{}
+	for _, opt := range opts {
+		c = opt(c)
+	}
+	return c
 }
 
-type ClientOption = newopt.Option[*clientImpl]
+type ClientOption = func(*clientImpl) *clientImpl
 
 func withConn(conn peanats.Connection) ClientOption {
 	return func(c *clientImpl) *clientImpl {
@@ -90,4 +94,55 @@ func (c *clientImpl) Start(ctx context.Context, subj string, data []byte) (Recei
 
 type TypedClient[A any, R any] interface {
 	Start(ctx context.Context, subj string, arg *A) (TypedReceiver[R], error)
+}
+
+func NewTypedClient[A, R any](nc peanats.Connection, opts ...TypedClientOption[A, R]) TypedClient[A, R] {
+	defaults := []TypedClientOption[A, R]{
+		WithCodec[A, R](peanats.JsonCodec{}),
+		WithTypedReplySubjecter[A, R](ReplySubjectNUID()),
+	}
+	opts = append(defaults, opts...)
+	c := &typedClientImpl[A, R]{clientImpl: clientImpl{conn: nc}}
+	for _, opt := range opts {
+		c = opt(c)
+	}
+	return c
+}
+
+type TypedClientOption[A, R any] func(*typedClientImpl[A, R]) *typedClientImpl[A, R]
+
+func WithCodec[A, R any](codec peanats.Codec) TypedClientOption[A, R] {
+	return func(c *typedClientImpl[A, R]) *typedClientImpl[A, R] {
+		c.codec = codec
+		return c
+	}
+}
+
+func WithTypedReplySubjecter[A, R any](rs ReplySubjecter) TypedClientOption[A, R] {
+	return func(c *typedClientImpl[A, R]) *typedClientImpl[A, R] {
+		c.rs = rs
+		return c
+	}
+}
+
+type typedClientImpl[A, R any] struct {
+	clientImpl
+	codec peanats.Codec
+}
+
+func (t *typedClientImpl[A, R]) WithCodec(codec peanats.Codec) TypedClient[A, R] {
+	t.codec = codec
+	return t
+}
+
+func (t *typedClientImpl[A, R]) Start(ctx context.Context, subj string, arg *A) (TypedReceiver[R], error) {
+	data, err := t.codec.Encode(arg)
+	if err != nil {
+		return nil, err
+	}
+	rcv, err := t.clientImpl.Start(ctx, subj, data)
+	if err != nil {
+		return nil, err
+	}
+	return &typedReceiverImpl[R]{Receiver: rcv, codec: t.codec}, nil
 }

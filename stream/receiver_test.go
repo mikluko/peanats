@@ -10,6 +10,8 @@ import (
 	"github.com/nats-io/nuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mikluko/peanats"
 )
 
 func TestReceiverImpl_Receive(t *testing.T) {
@@ -168,6 +170,62 @@ func TestReceiverImpl_ReceiveAll(t *testing.T) {
 	sub.AssertExpectations(t)
 }
 
+func TestTypedReceiverImpl_Receive(t *testing.T) {
+	type arg struct {
+		Parson string `json:"parson"`
+	}
+
+	rcv := receiverMock{}
+
+	var trcv TypedReceiver[arg] = &typedReceiverImpl[arg]{
+		Receiver: &rcv,
+		codec:    peanats.JsonCodec{},
+	}
+
+	rcv.On("Receive", mock.Anything).Return(&nats.Msg{
+		Data: []byte(`{"parson":"had a dog"}`),
+	}, nil).Twice()
+
+	obj, err := trcv.Receive(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "had a dog", obj.Parson)
+
+	obj, err = trcv.Receive(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "had a dog", obj.Parson)
+
+	rcv.On("Receive", mock.Anything).Return(nil, io.EOF).Once()
+
+	obj, err = trcv.Receive(context.Background())
+	require.Nil(t, obj)
+	require.ErrorIs(t, err, io.EOF)
+}
+
+func TestTypedReceiverImpl_ReceiveAll(t *testing.T) {
+	type arg struct {
+		Parson string `json:"parson"`
+	}
+
+	rcv := receiverMock{}
+
+	var trcv TypedReceiver[arg] = &typedReceiverImpl[arg]{
+		Receiver: &rcv,
+		codec:    peanats.JsonCodec{},
+	}
+
+	rcv.On("Receive", mock.Anything).Return(&nats.Msg{
+		Data: []byte(`{"parson":"had a dog"}`),
+	}, nil).Times(10)
+	rcv.On("Receive", mock.Anything).Return(nil, io.EOF).Once()
+
+	slc, err := trcv.ReceiveAll(context.Background())
+	require.NoError(t, err)
+	require.Len(t, slc, 10)
+	for _, obj := range slc {
+		require.Equal(t, "had a dog", obj.Parson)
+	}
+}
+
 type subscriptionMock struct {
 	mock.Mock
 }
@@ -183,4 +241,34 @@ func (m *subscriptionMock) NextMsg(ctx context.Context) (*nats.Msg, error) {
 		return nil, err
 	}
 	return args.Get(0).(*nats.Msg), nil
+}
+
+type receiverMock struct {
+	mock.Mock
+}
+
+func (m *receiverMock) UID() string {
+	args := m.Called()
+	return args.String(0)
+}
+
+func (m *receiverMock) Sequence() int {
+	args := m.Called()
+	return args.Int(0)
+}
+
+func (m *receiverMock) Receive(ctx context.Context) (*nats.Msg, error) {
+	args := m.Called(ctx)
+	if err := args.Error(1); err != nil {
+		return nil, err
+	}
+	return args.Get(0).(*nats.Msg), nil
+}
+
+func (m *receiverMock) ReceiveAll(ctx context.Context) ([]*nats.Msg, error) {
+	args := m.Called(ctx)
+	if err := args.Error(1); err != nil {
+		return nil, err
+	}
+	return args.Get(0).([]*nats.Msg), nil
 }

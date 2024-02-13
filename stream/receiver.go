@@ -71,7 +71,7 @@ func (r *receiverImpl) ReceiveAll(ctx context.Context) ([]*nats.Msg, error) {
 
 type TypedReceiver[T any] interface {
 	UID() string
-	Sequence() int64
+	Sequence() int
 	Receive(context.Context) (*T, error)
 	ReceiveAll(context.Context) ([]*T, error)
 }
@@ -81,19 +81,20 @@ type typedReceiverImpl[T any] struct {
 	codec peanats.Codec
 }
 
-func (r *typedReceiverImpl[T]) decode(msg *nats.Msg, err error) (*T, error) {
-	if len(msg.Data) == 0 {
-		return nil, err
-	}
+func (r *typedReceiverImpl[T]) decode(msg *nats.Msg) (*T, error) {
 	obj := new(T)
 	if err := r.codec.Decode(msg.Data, obj); err != nil {
 		return nil, err
 	}
-	return obj, err
+	return obj, nil
 }
 
 func (r *typedReceiverImpl[T]) Receive(ctx context.Context) (*T, error) {
-	return r.decode(r.Receiver.Receive(ctx))
+	data, err := r.Receiver.Receive(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return r.decode(data)
 }
 
 func (r *typedReceiverImpl[T]) ReceiveAll(ctx context.Context) ([]*T, error) {
