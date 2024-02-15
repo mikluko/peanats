@@ -45,7 +45,7 @@ func (r *receiverImpl) Receive(ctx context.Context) (*nats.Msg, error) {
 		if len(msg.Data) != 0 {
 			return nil, fmt.Errorf("%w: %s", ErrProtocolViolation, "unexpected data in done message")
 		}
-		err = io.EOF
+		return nil, io.EOF
 	}
 	if seq := msg.Header.Get(HeaderSequence); seq == "" {
 		return nil, fmt.Errorf("%w: %s: %w", ErrProtocolViolation, "sequence header is empty or absent", err)
