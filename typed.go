@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"google.golang.org/protobuf/encoding/prototext"
 	"net/http"
+
+	"google.golang.org/protobuf/encoding/prototext"
 
 	"github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -43,7 +44,10 @@ func Typed[ArgT, ResT any](c Codec, f TypedHandler[ArgT, ResT]) Handler {
 				Cause:   err,
 			}
 		}
-		return f.Serve(&typedPublisherImpl[ResT]{c, pub}, &typedRequestImpl[ArgT]{arg: arg})
+		return f.Serve(
+			&typedPublisherImpl[ResT]{c, pub},
+			&typedRequestImpl[ArgT]{arg: arg, req: req},
+		)
 	})
 }
 
