@@ -44,6 +44,7 @@ func TestServer(t *testing.T) {
 		ListenSubjects: []string{"test.requests"},
 		Handler: ChainMiddleware(HandlerFunc(func(pub Publisher, req Request) error {
 			require.Equal(t, []byte("test"), req.Data())
+			require.Equal(t, nats.Header{}, req.Header()) // no headers should not return nil
 			return pub.Publish([]byte("test"))
 		}), MakePublishSubjectMiddleware("test.results")),
 	}

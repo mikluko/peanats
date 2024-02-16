@@ -106,6 +106,9 @@ func (s *Server) Wait() {
 }
 
 func (s *Server) handle(msg *nats.Msg) {
+	if msg.Header == nil {
+		msg.Header = make(nats.Header)
+	}
 	rq := requestImpl{
 		msg: msg,
 	}
