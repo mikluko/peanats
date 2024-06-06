@@ -2,6 +2,7 @@ package peanats
 
 import (
 	"errors"
+
 	"github.com/nats-io/nats.go"
 )
 
@@ -11,6 +12,17 @@ type Publisher interface {
 	WithSubject(subject string) Publisher
 	Header() *nats.Header
 	Publish(data []byte) error
+}
+
+func NewPublisher(publisherMsg PublisherMsg) Publisher {
+	return NewPublisherWithSubject(publisherMsg, "")
+}
+
+func NewPublisherWithSubject(publisherMsg PublisherMsg, subject string) Publisher {
+	return &publisherImpl{
+		PublisherMsg: publisherMsg,
+		subject:      subject,
+	}
 }
 
 type publisherImpl struct {
