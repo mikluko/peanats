@@ -14,13 +14,13 @@ type Publisher interface {
 	Publish(data []byte) error
 }
 
-func NewPublisher(publisherMsg PublisherMsg) Publisher {
-	return NewPublisherWithSubject(publisherMsg, "")
+func NewPublisher(p PublisherMsg) Publisher {
+	return NewPublisherWithSubject(p, "")
 }
 
-func NewPublisherWithSubject(publisherMsg PublisherMsg, subject string) Publisher {
+func NewPublisherWithSubject(p PublisherMsg, subject string) Publisher {
 	return &publisherImpl{
-		PublisherMsg: publisherMsg,
+		PublisherMsg: p,
 		subject:      subject,
 	}
 }
