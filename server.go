@@ -32,6 +32,7 @@ type Server struct {
 	Handler        Handler
 	BaseContext    context.Context
 	Concurrency    int
+	ChanBufferSize int
 	QueueName      string
 	ListenSubjects []string
 
@@ -59,7 +60,7 @@ func (s *Server) Start() error {
 	}
 
 	s.done = make(chan struct{})
-	s.ch = make(chan *nats.Msg)
+	s.ch = make(chan *nats.Msg, s.ChanBufferSize)
 	s.pool = pond.New(s.Concurrency+1, 0, pond.MinWorkers(s.Concurrency+1))
 	s.pool.Submit(func() {
 		for msg := range s.ch {
