@@ -63,8 +63,9 @@ func (s *Server) Start() error {
 	s.pool = pond.New(s.Concurrency+1, 0, pond.MinWorkers(s.Concurrency+1))
 	s.pool.Submit(func() {
 		for msg := range s.ch {
+			closureMsg := msg
 			s.pool.Submit(func() {
-				s.handle(msg)
+				s.handle(closureMsg)
 			})
 		}
 	})
