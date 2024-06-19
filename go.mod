@@ -1,8 +1,6 @@
 module github.com/mikluko/peanats
 
-go 1.21
-
-toolchain go1.21.6
+go 1.22
 
 require (
 	github.com/alitto/pond v1.8.3
