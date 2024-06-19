@@ -3,7 +3,6 @@ package peanats
 import (
 	"context"
 	"errors"
-	"runtime"
 
 	"github.com/alitto/pond"
 	"github.com/nats-io/nats.go"
@@ -32,6 +31,7 @@ type Server struct {
 	Handler        Handler
 	BaseContext    context.Context
 	Concurrency    int
+	BufferSize     int
 	QueueName      string
 	ListenSubjects []string
 
@@ -52,14 +52,17 @@ func (s *Server) Start() error {
 		return errors.New("no listen subjects")
 	}
 	if s.Concurrency == 0 {
-		s.Concurrency = runtime.NumCPU()*2 - 1
+		return errors.New("concurrency is not set")
+	}
+	if s.BufferSize == 0 {
+		s.BufferSize = s.Concurrency
 	}
 	if s.BaseContext == nil {
 		s.BaseContext = context.Background()
 	}
 
 	s.done = make(chan struct{})
-	s.ch = make(chan *nats.Msg)
+	s.ch = make(chan *nats.Msg, s.BufferSize)
 	s.pool = pond.New(s.Concurrency+1, 0, pond.MinWorkers(s.Concurrency+1))
 	s.pool.Submit(func() {
 		for msg := range s.ch {
