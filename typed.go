@@ -22,6 +22,8 @@ type TypedRequest[T any] interface {
 type TypedPublisher[ResT any] interface {
 	Header() *nats.Header
 	Publish(*ResT) error
+	Subject() string
+	WithSubject(string) TypedPublisher[ResT]
 }
 
 type TypedHandler[ArgT, ResT any] interface {
@@ -87,6 +89,17 @@ func (p *typedPublisherImpl[RS]) Publish(v *RS) error {
 		}
 	}
 	return p.pub.Publish(data)
+}
+
+func (p *typedPublisherImpl[RS]) Subject() string {
+	return p.pub.Subject()
+}
+
+func (p *typedPublisherImpl[RS]) WithSubject(subject string) TypedPublisher[RS] {
+	return &typedPublisherImpl[RS]{
+		codec: p.codec,
+		pub:   p.pub.WithSubject(subject),
+	}
 }
 
 type Codec interface {

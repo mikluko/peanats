@@ -47,6 +47,9 @@ func TestTyped(t *testing.T) {
 
 		err := f.Serve(pub, req)
 		require.NoError(t, err)
+
+		req.AssertExpectations(t)
+		pub.AssertExpectations(t)
 	})
 	t.Run("decode error", func(t *testing.T) {
 		p := TypedHandlerFunc[testAdapterArgument, testAdapterResult](
@@ -79,6 +82,9 @@ func TestTyped(t *testing.T) {
 		var errObj *Error
 		require.True(t, errors.As(err, &errObj))
 		require.Equal(t, http.StatusBadRequest, errObj.Code)
+
+		req.AssertExpectations(t)
+		pub.AssertExpectations(t)
 	})
 	t.Run("encode error", func(t *testing.T) {
 		arg := testAdapterArgument{Arg: "Hello, world!"}
@@ -113,6 +119,9 @@ func TestTyped(t *testing.T) {
 		var errObj *Error
 		require.True(t, errors.As(err, &errObj))
 		require.Equal(t, http.StatusInternalServerError, errObj.Code)
+
+		req.AssertExpectations(t)
+		pub.AssertExpectations(t)
 	})
 }
 
