@@ -96,8 +96,8 @@ func WithDefaultRoute(h MessageHandler) ConsumerOpt {
 	}
 }
 
-func WithMiddleware(m Middleware) ConsumerOpt {
+func WithMiddleware(m ...Middleware) ConsumerOpt {
 	return func(impl *consumerImpl) {
-		impl.middleware = append(impl.middleware, m)
+		impl.middleware = append(impl.middleware, m...)
 	}
 }
