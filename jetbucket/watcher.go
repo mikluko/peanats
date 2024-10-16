@@ -15,6 +15,7 @@ var ErrInitialValuesOver = errors.New("initial values done")
 
 type Watcher[T any] interface {
 	Next() (jetstream.KeyValueEntry, *T, error)
+	Stop() error
 }
 
 func NewWatcher[T any](w watcher) Watcher[T] {
