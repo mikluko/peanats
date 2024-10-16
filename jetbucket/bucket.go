@@ -11,7 +11,7 @@ type bucket interface {
 }
 
 type Bucket[T any] interface {
-	Get(ctx context.Context, key string) (entry, *T, error)
+	Get(ctx context.Context, key string) (jetstream.KeyValueEntry, *T, error)
 	Put(ctx context.Context, key string, mod *T) (rev uint64, err error)
 	Delete(ctx context.Context, key string, opts ...jetstream.KVDeleteOpt) error
 	Watch(ctx context.Context, match string, opts ...jetstream.WatchOpt) (Watcher[T], error)
@@ -35,7 +35,7 @@ type bucketImpl[T any] struct {
 	bucket bucket
 }
 
-func (s *bucketImpl[T]) Get(ctx context.Context, key string) (entry, *T, error) {
+func (s *bucketImpl[T]) Get(ctx context.Context, key string) (jetstream.KeyValueEntry, *T, error) {
 	ent, err := s.bucket.Get(ctx, key)
 	if err != nil {
 		return nil, nil, err
