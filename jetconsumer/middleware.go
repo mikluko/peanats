@@ -2,6 +2,7 @@ package jetconsumer
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -60,15 +61,21 @@ func WithAck() Middleware {
 	}
 }
 
-// WithNack returns a middleware that NAKs the message if the handler returns an error.
-func WithNack() Middleware {
+// WithNak returns a middleware that NAKs the message if the handler returns an error.
+// If propagate is true, the error is propagated to the outer handler.
+func WithNak(propagate bool) Middleware {
 	return func(next MessageHandler) MessageHandler {
 		return MessageHandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
-			err := next.Serve(ctx, msg)
-			if err != nil {
-				return err
+			serveErr := next.Serve(ctx, msg)
+			if serveErr != nil {
+				if nakErr := msg.Nak(); nakErr != nil {
+					return fmt.Errorf("%w: %w", nakErr, serveErr)
+				}
 			}
-			return msg.Ack()
+			if propagate {
+				return serveErr
+			}
+			return nil
 		})
 	}
 }
