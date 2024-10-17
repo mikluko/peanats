@@ -133,11 +133,11 @@ func (r *raftImpl) Wait(ctx context.Context, state State) error {
 	r.cond.L.Lock()
 	defer r.cond.L.Unlock()
 	for r.State() != state {
-		r.cond.Wait()
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
+			r.cond.Wait()
 		}
 	}
 	return nil
@@ -151,14 +151,18 @@ func (r *raftImpl) loop(ctx context.Context) {
 			if err != nil {
 				r.errh(fmt.Errorf("state change handler errored: %w", err))
 			}
+			r.cond.L.Lock()
 			r.cond.Broadcast()
+			r.cond.L.Unlock()
 		case err := <-r.che:
 			r.errh(err)
 		case <-ctx.Done():
 			r.node.Close()
 			close(r.che)
 			close(r.chc)
+			r.cond.L.Lock()
 			r.cond.Broadcast()
+			r.cond.L.Unlock()
 			return
 		}
 	}
