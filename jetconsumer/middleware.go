@@ -9,12 +9,19 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-type Middleware func(handler MessageHandler) MessageHandler
+type Middleware func(handler Handler) Handler
+
+func ChainMiddleware(h Handler, mws ...Middleware) Handler {
+	for i := 0; i < len(mws); i++ {
+		h = mws[i](h)
+	}
+	return h
+}
 
 // WithAccessLog returns a middleware that logs access using the provided slog.Logger.
 func WithAccessLog(logger *slog.Logger, lvl slog.Level) Middleware {
-	return func(next MessageHandler) MessageHandler {
-		return MessageHandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
+	return func(next Handler) Handler {
+		return HandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
 			log := logger.With("subject", msg.Subject())
 			hdr := msg.Headers()
 			if hdr != nil {
@@ -25,7 +32,7 @@ func WithAccessLog(logger *slog.Logger, lvl slog.Level) Middleware {
 			if err != nil {
 				return err
 			}
-			log.Log(ctx, lvl, "", "latency", time.Since(t))
+			log.Log(ctx, lvl, "msg", "latency", time.Since(t))
 			return nil
 		})
 	}
@@ -34,8 +41,8 @@ func WithAccessLog(logger *slog.Logger, lvl slog.Level) Middleware {
 // WithErrorLog returns a middleware that logs errors using the provided logger.
 // If propagate is true, the error is propagated to the outer handler.
 func WithErrorLog(logger *slog.Logger, propagate bool) Middleware {
-	return func(next MessageHandler) MessageHandler {
-		return MessageHandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
+	return func(next Handler) Handler {
+		return HandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
 			err := next.Serve(ctx, msg)
 			if err != nil {
 				logger.ErrorContext(ctx, "error", err)
@@ -50,8 +57,8 @@ func WithErrorLog(logger *slog.Logger, propagate bool) Middleware {
 
 // WithAck returns a middleware that ACKs the message after handling it successfully.
 func WithAck() Middleware {
-	return func(next MessageHandler) MessageHandler {
-		return MessageHandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
+	return func(next Handler) Handler {
+		return HandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
 			err := next.Serve(ctx, msg)
 			if err != nil {
 				return err
@@ -62,20 +69,16 @@ func WithAck() Middleware {
 }
 
 // WithNak returns a middleware that NAKs the message if the handler returns an error.
-// If propagate is true, the error is propagated to the outer handler.
-func WithNak(propagate bool) Middleware {
-	return func(next MessageHandler) MessageHandler {
-		return MessageHandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
+func WithNak() Middleware {
+	return func(next Handler) Handler {
+		return HandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
 			serveErr := next.Serve(ctx, msg)
 			if serveErr != nil {
 				if nakErr := msg.Nak(); nakErr != nil {
 					return fmt.Errorf("%w: %w", nakErr, serveErr)
 				}
 			}
-			if propagate {
-				return serveErr
-			}
-			return nil
+			return serveErr
 		})
 	}
 }

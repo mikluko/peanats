@@ -1,14 +1,9 @@
 package peanats
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"sync"
-)
-
-var (
-	ErrMuxNotFound = errors.New("not found")
 )
 
 type muxEntry struct {

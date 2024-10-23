@@ -2,49 +2,49 @@ package jetconsumer
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/nats-io/nats.go/jetstream"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
+
+	"github.com/mikluko/peanats"
 )
 
-type Handler[T any] interface {
-	Serve(context.Context, *T) error
-}
-
-type HandlerFunc[T any] func(ctx context.Context, arg *T) error
-
-func (f HandlerFunc[T]) Serve(ctx context.Context, arg *T) error {
-	return f(ctx, arg)
-}
-
-type MessageHandlerFunc func(ctx context.Context, msg jetstream.Msg) error
-
-func (f MessageHandlerFunc) Serve(ctx context.Context, msg jetstream.Msg) error {
-	return f(ctx, msg)
-}
-
-type MessageHandler interface {
+type Handler interface {
 	Serve(ctx context.Context, msg jetstream.Msg) error
 }
 
-func messageHandlerFrom[T any](h Handler[T]) MessageHandler {
+type HandlerFunc func(ctx context.Context, msg jetstream.Msg) error
+
+func (f HandlerFunc) Serve(ctx context.Context, msg jetstream.Msg) error { return f(ctx, msg) }
+
+type TypedHandler[T any] interface {
+	Serve(context.Context, TypedMessage[T]) error
+}
+
+type TypedHandlerFunc[T any] func(peanats.TypedRequest[T]) error
+
+func (f TypedHandlerFunc[T]) Serve(arg peanats.TypedRequest[T]) error { return f(arg) }
+
+func Handle[T any](h TypedHandler[T]) Handler {
 	return messageHandlerImpl[T]{h}
 }
 
 type messageHandlerImpl[T any] struct {
-	h Handler[T]
+	h TypedHandler[T]
 }
 
 func (h messageHandlerImpl[T]) Serve(ctx context.Context, msg jetstream.Msg) (err error) {
-	arg := new(T)
-	err = protojson.Unmarshal(msg.Data(), any(arg).(proto.Message))
+	tm, err := message[T](msg)
 	if err != nil {
 		return err
 	}
-	err = h.h.Serve(ctx, arg)
-	if err != nil {
-		return err
-	}
-	return nil
+	return h.h.Serve(ctx, tm)
 }
+
+var NotFoundHandler = HandlerFunc(func(_ context.Context, _ jetstream.Msg) error {
+	return peanats.Error{
+		Code:    http.StatusNotFound,
+		Message: "handler not found",
+		Cause:   nil,
+	}
+})
