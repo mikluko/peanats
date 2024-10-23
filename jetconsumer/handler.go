@@ -12,6 +12,12 @@ type Handler[T any] interface {
 	Serve(context.Context, *T) error
 }
 
+type HandlerFunc[T any] func(ctx context.Context, arg *T) error
+
+func (f HandlerFunc[T]) Serve(ctx context.Context, arg *T) error {
+	return f(ctx, arg)
+}
+
 type MessageHandlerFunc func(ctx context.Context, msg jetstream.Msg) error
 
 func (f MessageHandlerFunc) Serve(ctx context.Context, msg jetstream.Msg) error {
