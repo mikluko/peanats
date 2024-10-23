@@ -45,7 +45,7 @@ func WithErrorLog(logger *slog.Logger, propagate bool) Middleware {
 		return HandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
 			err := next.Serve(ctx, msg)
 			if err != nil {
-				logger.ErrorContext(ctx, "error", err)
+				logger.ErrorContext(ctx, "error", "subject", msg.Subject(), "err", err)
 				if propagate {
 					return err
 				}

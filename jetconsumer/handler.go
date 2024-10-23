@@ -25,7 +25,7 @@ type TypedHandlerFunc[T any] func(peanats.TypedRequest[T]) error
 
 func (f TypedHandlerFunc[T]) Serve(arg peanats.TypedRequest[T]) error { return f(arg) }
 
-func Handle[T any](h TypedHandler[T]) Handler {
+func HandleType[T any](h TypedHandler[T]) Handler {
 	return messageHandlerImpl[T]{h}
 }
 
