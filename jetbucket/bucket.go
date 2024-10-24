@@ -14,7 +14,8 @@ type bucket interface {
 
 type Bucket[T any] interface {
 	Get(ctx context.Context, key string) (Entry[T], error)
-	Put(ctx context.Context, key string, mod *T) (rev uint64, err error)
+	Put(ctx context.Context, key string, mod *T) (uint64, error)
+	Update(ctx context.Context, key string, mod *T, rev uint64) (uint64, error)
 	Delete(ctx context.Context, key string, opts ...jetstream.KVDeleteOpt) error
 	Watch(ctx context.Context, match string, opts ...jetstream.WatchOpt) (Watcher[T], error)
 	WatchAll(ctx context.Context, opts ...jetstream.WatchOpt) (Watcher[T], error)
@@ -95,6 +96,14 @@ func (s *bucketImpl[T]) Put(ctx context.Context, key string, mod *T) (uint64, er
 		return 0, err
 	}
 	return s.bucket.Put(ctx, s.prefixed(key), b)
+}
+
+func (s *bucketImpl[T]) Update(ctx context.Context, key string, mod *T, rev uint64) (uint64, error) {
+	b, err := marshal(any(mod).(marshaler))
+	if err != nil {
+		return 0, err
+	}
+	return s.bucket.Update(ctx, s.prefixed(key), b, rev)
 }
 
 func (s *bucketImpl[T]) Delete(ctx context.Context, key string, opts ...jetstream.KVDeleteOpt) error {

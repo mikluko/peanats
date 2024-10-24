@@ -77,6 +77,20 @@ func TestBucket_Put(t *testing.T) {
 	assert.Equal(t, uint64(1), rev)
 }
 
+func TestBucket_Update(t *testing.T) {
+	key := "parson.had.a.dog"
+	mod := TestModel{Name: "balooney"}
+
+	rb := newBucketMock(t)
+	rb.OnUpdate(key, []byte(`{"name":"balooney"}`), 1).TypedReturns(uint64(2), nil)
+
+	b := NewBucket[TestModel](rb)
+	rev, err := b.Update(context.TODO(), key, &mod, 1)
+
+	require.NoError(t, err)
+	assert.Equal(t, uint64(2), rev)
+}
+
 func TestBucket_Delete(t *testing.T) {
 	key := "uid"
 
