@@ -10,10 +10,12 @@ import (
 
 func TestWatcher(t *testing.T) {
 	up0 := newEntryMock(t)
+	up0.OnKey().Return("parson.had.a.dog").Once()
 	up0.OnOperation().TypedReturns(jetstream.KeyValuePut).Once()
 	up0.OnValue().TypedReturns([]byte(`{"name":"balooney"}`)).Once()
 
 	up1 := newEntryMock(t)
+	up1.OnKey().Return("parson.had.a.cat").Once()
 	up1.OnOperation().TypedReturns(jetstream.KeyValueDelete).Once()
 
 	ch := make(chan jetstream.KeyValueEntry, 3)
@@ -26,21 +28,21 @@ func TestWatcher(t *testing.T) {
 	nw := newWatcherMock(t)
 	nw.OnUpdates().TypedReturns(ch)
 
-	w := NewWatcher[TestModel](nw)
+	w := NewWatcher[TestModel](nw, WatcherPrefix("parson"))
 
-	e, v, err := w.Next()
+	e, err := w.Next()
 	require.NoError(t, err)
-	assert.NotNil(t, e)
-	assert.NotNil(t, v)
-	assert.Equal(t, "balooney", v.Name)
+	assert.NotNil(t, e.Value())
+	assert.Equal(t, "had.a.dog", e.Key())
+	assert.Equal(t, TestModel{Name: "balooney"}, *e.Value())
 
-	e, v, err = w.Next()
+	e, err = w.Next()
 	require.ErrorIs(t, err, ErrInitialValuesOver)
 	assert.Nil(t, e)
-	assert.Nil(t, v)
 
-	e, v, err = w.Next()
+	e, err = w.Next()
 	require.NoError(t, err)
 	assert.NotNil(t, e)
-	assert.Nil(t, v)
+	assert.Equal(t, "had.a.cat", e.Key())
+	assert.Nil(t, e.Value())
 }

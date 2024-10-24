@@ -4,3 +4,5 @@ package jetbucket
 // mocktail:bucket
 // mocktail:entry
 // mocktail:watcher
+// mocktail:marshaler
+// mocktail:unmarshaler

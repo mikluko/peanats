@@ -4613,3 +4613,215 @@ func (_c *watcherUpdatesCall) OnStopRaw() *watcherStopCall {
 func (_c *watcherUpdatesCall) OnUpdatesRaw() *watcherUpdatesCall {
 	return _c.Parent.OnUpdatesRaw()
 }
+
+// marshalerMock mock of marshaler.
+type marshalerMock struct{ mock.Mock }
+
+// newMarshalerMock creates a new marshalerMock.
+func newMarshalerMock(tb testing.TB) *marshalerMock {
+	tb.Helper()
+
+	m := &marshalerMock{}
+	m.Mock.Test(tb)
+
+	tb.Cleanup(func() { m.AssertExpectations(tb) })
+
+	return m
+}
+
+func (_m *marshalerMock) Marshal() ([]byte, error) {
+	_ret := _m.Called()
+
+	if _rf, ok := _ret.Get(0).(func() ([]byte, error)); ok {
+		return _rf()
+	}
+
+	_ra0, _ := _ret.Get(0).([]byte)
+	_rb1 := _ret.Error(1)
+
+	return _ra0, _rb1
+}
+
+func (_m *marshalerMock) OnMarshal() *marshalerMarshalCall {
+	return &marshalerMarshalCall{Call: _m.Mock.On("Marshal"), Parent: _m}
+}
+
+func (_m *marshalerMock) OnMarshalRaw() *marshalerMarshalCall {
+	return &marshalerMarshalCall{Call: _m.Mock.On("Marshal"), Parent: _m}
+}
+
+type marshalerMarshalCall struct {
+	*mock.Call
+	Parent *marshalerMock
+}
+
+func (_c *marshalerMarshalCall) Panic(msg string) *marshalerMarshalCall {
+	_c.Call = _c.Call.Panic(msg)
+	return _c
+}
+
+func (_c *marshalerMarshalCall) Once() *marshalerMarshalCall {
+	_c.Call = _c.Call.Once()
+	return _c
+}
+
+func (_c *marshalerMarshalCall) Twice() *marshalerMarshalCall {
+	_c.Call = _c.Call.Twice()
+	return _c
+}
+
+func (_c *marshalerMarshalCall) Times(i int) *marshalerMarshalCall {
+	_c.Call = _c.Call.Times(i)
+	return _c
+}
+
+func (_c *marshalerMarshalCall) WaitUntil(w <-chan time.Time) *marshalerMarshalCall {
+	_c.Call = _c.Call.WaitUntil(w)
+	return _c
+}
+
+func (_c *marshalerMarshalCall) After(d time.Duration) *marshalerMarshalCall {
+	_c.Call = _c.Call.After(d)
+	return _c
+}
+
+func (_c *marshalerMarshalCall) Run(fn func(args mock.Arguments)) *marshalerMarshalCall {
+	_c.Call = _c.Call.Run(fn)
+	return _c
+}
+
+func (_c *marshalerMarshalCall) Maybe() *marshalerMarshalCall {
+	_c.Call = _c.Call.Maybe()
+	return _c
+}
+
+func (_c *marshalerMarshalCall) TypedReturns(a []byte, b error) *marshalerMarshalCall {
+	_c.Call = _c.Return(a, b)
+	return _c
+}
+
+func (_c *marshalerMarshalCall) ReturnsFn(fn func() ([]byte, error)) *marshalerMarshalCall {
+	_c.Call = _c.Return(fn)
+	return _c
+}
+
+func (_c *marshalerMarshalCall) TypedRun(fn func()) *marshalerMarshalCall {
+	_c.Call = _c.Call.Run(func(args mock.Arguments) {
+		fn()
+	})
+	return _c
+}
+
+func (_c *marshalerMarshalCall) OnMarshal() *marshalerMarshalCall {
+	return _c.Parent.OnMarshal()
+}
+
+func (_c *marshalerMarshalCall) OnMarshalRaw() *marshalerMarshalCall {
+	return _c.Parent.OnMarshalRaw()
+}
+
+// unmarshalerMock mock of unmarshaler.
+type unmarshalerMock struct{ mock.Mock }
+
+// newUnmarshalerMock creates a new unmarshalerMock.
+func newUnmarshalerMock(tb testing.TB) *unmarshalerMock {
+	tb.Helper()
+
+	m := &unmarshalerMock{}
+	m.Mock.Test(tb)
+
+	tb.Cleanup(func() { m.AssertExpectations(tb) })
+
+	return m
+}
+
+func (_m *unmarshalerMock) Unmarshal(aParam []byte) error {
+	_ret := _m.Called(aParam)
+
+	if _rf, ok := _ret.Get(0).(func([]byte) error); ok {
+		return _rf(aParam)
+	}
+
+	_ra0 := _ret.Error(0)
+
+	return _ra0
+}
+
+func (_m *unmarshalerMock) OnUnmarshal(aParam []byte) *unmarshalerUnmarshalCall {
+	return &unmarshalerUnmarshalCall{Call: _m.Mock.On("Unmarshal", aParam), Parent: _m}
+}
+
+func (_m *unmarshalerMock) OnUnmarshalRaw(aParam interface{}) *unmarshalerUnmarshalCall {
+	return &unmarshalerUnmarshalCall{Call: _m.Mock.On("Unmarshal", aParam), Parent: _m}
+}
+
+type unmarshalerUnmarshalCall struct {
+	*mock.Call
+	Parent *unmarshalerMock
+}
+
+func (_c *unmarshalerUnmarshalCall) Panic(msg string) *unmarshalerUnmarshalCall {
+	_c.Call = _c.Call.Panic(msg)
+	return _c
+}
+
+func (_c *unmarshalerUnmarshalCall) Once() *unmarshalerUnmarshalCall {
+	_c.Call = _c.Call.Once()
+	return _c
+}
+
+func (_c *unmarshalerUnmarshalCall) Twice() *unmarshalerUnmarshalCall {
+	_c.Call = _c.Call.Twice()
+	return _c
+}
+
+func (_c *unmarshalerUnmarshalCall) Times(i int) *unmarshalerUnmarshalCall {
+	_c.Call = _c.Call.Times(i)
+	return _c
+}
+
+func (_c *unmarshalerUnmarshalCall) WaitUntil(w <-chan time.Time) *unmarshalerUnmarshalCall {
+	_c.Call = _c.Call.WaitUntil(w)
+	return _c
+}
+
+func (_c *unmarshalerUnmarshalCall) After(d time.Duration) *unmarshalerUnmarshalCall {
+	_c.Call = _c.Call.After(d)
+	return _c
+}
+
+func (_c *unmarshalerUnmarshalCall) Run(fn func(args mock.Arguments)) *unmarshalerUnmarshalCall {
+	_c.Call = _c.Call.Run(fn)
+	return _c
+}
+
+func (_c *unmarshalerUnmarshalCall) Maybe() *unmarshalerUnmarshalCall {
+	_c.Call = _c.Call.Maybe()
+	return _c
+}
+
+func (_c *unmarshalerUnmarshalCall) TypedReturns(a error) *unmarshalerUnmarshalCall {
+	_c.Call = _c.Return(a)
+	return _c
+}
+
+func (_c *unmarshalerUnmarshalCall) ReturnsFn(fn func([]byte) error) *unmarshalerUnmarshalCall {
+	_c.Call = _c.Return(fn)
+	return _c
+}
+
+func (_c *unmarshalerUnmarshalCall) TypedRun(fn func([]byte)) *unmarshalerUnmarshalCall {
+	_c.Call = _c.Call.Run(func(args mock.Arguments) {
+		_aParam, _ := args.Get(0).([]byte)
+		fn(_aParam)
+	})
+	return _c
+}
+
+func (_c *unmarshalerUnmarshalCall) OnUnmarshal(aParam []byte) *unmarshalerUnmarshalCall {
+	return _c.Parent.OnUnmarshal(aParam)
+}
+
+func (_c *unmarshalerUnmarshalCall) OnUnmarshalRaw(aParam interface{}) *unmarshalerUnmarshalCall {
+	return _c.Parent.OnUnmarshalRaw(aParam)
+}

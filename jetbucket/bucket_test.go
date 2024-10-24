@@ -25,9 +25,10 @@ func TestBucket_New(t *testing.T) {
 
 func TestBucket_Get(t *testing.T) {
 	t.Run("simple", func(t *testing.T) {
-		key := "parson-had-a-dog"
+		key := "parson.had.a.dog"
 
 		ne := newEntryMock(t)
+		ne.OnKey().Return(key).Once()
 		ne.OnOperation().TypedReturns(jetstream.KeyValuePut).Once()
 		ne.OnValue().TypedReturns([]byte(`{"name":"balooney"}`)).Once()
 
@@ -35,18 +36,18 @@ func TestBucket_Get(t *testing.T) {
 		nb.OnGet(key).TypedReturns(ne, nil)
 
 		b := NewBucket[TestModel](nb)
-		ent, val, err := b.Get(context.TODO(), key)
+		v, err := b.Get(context.TODO(), key)
 		require.NoError(t, err)
-		require.NotNil(t, ent)
-		require.NotNil(t, val)
+		require.NotNil(t, v)
 
-		assert.Equal(t, "balooney", val.Name)
+		assert.Equal(t, TestModel{Name: "balooney"}, *v.Value())
 	})
-	t.Run("prefixed", func(t *testing.T) {
+	t.Run("with prefix", func(t *testing.T) {
 		prefix := "parson"
 		key := "had.a.dog"
 
 		ne := newEntryMock(t)
+		ne.OnKey().Return(prefix + "." + key).Once()
 		ne.OnOperation().TypedReturns(jetstream.KeyValuePut).Once()
 		ne.OnValue().TypedReturns([]byte(`{"name":"balooney"}`)).Once()
 
@@ -54,17 +55,16 @@ func TestBucket_Get(t *testing.T) {
 		nb.OnGet(prefix+"."+key).TypedReturns(ne, nil)
 
 		b := NewBucket[TestModel](nb, WithKeyPrefix(prefix))
-		ent, val, err := b.Get(context.TODO(), key)
+		v, err := b.Get(context.TODO(), key)
 		require.NoError(t, err)
-		require.NotNil(t, ent)
-		require.NotNil(t, val)
+		require.NotNil(t, v)
 
-		assert.Equal(t, "balooney", val.Name)
+		assert.Equal(t, TestModel{Name: "balooney"}, *v.Value())
 	})
 }
 
 func TestBucket_Put(t *testing.T) {
-	key := "parson-had-a-dog"
+	key := "parson.had.a.dog"
 	mod := TestModel{Name: "balooney"}
 
 	rb := newBucketMock(t)

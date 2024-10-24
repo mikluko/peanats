@@ -3,6 +3,7 @@ package jetbucket
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/nats-io/nats.go/jetstream"
 )
@@ -12,7 +13,7 @@ type bucket interface {
 }
 
 type Bucket[T any] interface {
-	Get(ctx context.Context, key string) (jetstream.KeyValueEntry, *T, error)
+	Get(ctx context.Context, key string) (Entry[T], error)
 	Put(ctx context.Context, key string, mod *T) (rev uint64, err error)
 	Delete(ctx context.Context, key string, opts ...jetstream.KVDeleteOpt) error
 	Watch(ctx context.Context, match string, opts ...jetstream.WatchOpt) (Watcher[T], error)
@@ -61,20 +62,31 @@ func (s *bucketImpl[T]) prefixed(key string) string {
 	return fmt.Sprintf("%s.%s", s.prefix, key)
 }
 
-func (s *bucketImpl[T]) Get(ctx context.Context, key string) (jetstream.KeyValueEntry, *T, error) {
-	ent, err := s.bucket.Get(ctx, s.prefixed(key))
+func (s *bucketImpl[T]) deprefixed(key string) string {
+	if s.prefix == "" {
+		return key
+	}
+	return strings.TrimPrefix(key, fmt.Sprintf("%s.", s.prefix))
+}
+
+func (s *bucketImpl[T]) Get(ctx context.Context, key string) (Entry[T], error) {
+	raw, err := s.bucket.Get(ctx, s.prefixed(key))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	if ent.Operation() != jetstream.KeyValuePut {
-		return ent, nil, nil
+	v := entryImpl[T]{
+		entry: raw,
+		key:   s.deprefixed(raw.Key()),
 	}
-	val := new(T)
-	err = unmarshal(any(val), ent.Value())
+	if raw.Operation() != jetstream.KeyValuePut {
+		return v, nil
+	}
+	v.value = new(T)
+	err = unmarshal(any(v.value), raw.Value())
 	if err != nil {
-		return nil, nil, err
+		return v, err
 	}
-	return ent, val, nil
+	return v, nil
 }
 
 func (s *bucketImpl[T]) Put(ctx context.Context, key string, mod *T) (uint64, error) {
@@ -94,7 +106,7 @@ func (s *bucketImpl[T]) Watch(ctx context.Context, match string, opts ...jetstre
 	if err != nil {
 		return nil, err
 	}
-	return NewWatcher[T](w), nil
+	return NewWatcher[T](w, WatcherPrefix(s.prefix)), nil
 }
 
 func (s *bucketImpl[T]) WatchAll(ctx context.Context, opts ...jetstream.WatchOpt) (Watcher[T], error) {
