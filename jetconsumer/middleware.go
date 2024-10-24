@@ -19,7 +19,14 @@ func ChainMiddleware(h Handler, mws ...Middleware) Handler {
 }
 
 // WithAccessLog returns a middleware that logs access using the provided slog.Logger.
-func WithAccessLog(logger *slog.Logger, lvl slog.Level) Middleware {
+func WithAccessLog(logger *slog.Logger, opts ...AccessLogOption) Middleware {
+	params := &accessLogParams{
+		level:   slog.LevelInfo,
+		message: "",
+	}
+	for _, opt := range opts {
+		opt(params)
+	}
 	return func(next Handler) Handler {
 		return HandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
 			log := logger.With("subject", msg.Subject())
@@ -32,9 +39,28 @@ func WithAccessLog(logger *slog.Logger, lvl slog.Level) Middleware {
 			if err != nil {
 				return err
 			}
-			log.Log(ctx, lvl, "msg", "latency", time.Since(t))
+			log.Log(ctx, params.level, params.message, "latency", time.Since(t))
 			return nil
 		})
+	}
+}
+
+type accessLogParams struct {
+	level   slog.Level
+	message string
+}
+
+type AccessLogOption func(*accessLogParams)
+
+func WithAccessLogLevel(level slog.Level) AccessLogOption {
+	return func(params *accessLogParams) {
+		params.level = level
+	}
+}
+
+func WithAccessLogMessage(message string) AccessLogOption {
+	return func(params *accessLogParams) {
+		params.message = message
 	}
 }
 
