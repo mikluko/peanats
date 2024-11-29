@@ -18,7 +18,7 @@ type Client interface {
 func NewClient(conn peanats.Connection, opts ...ClientOption) Client {
 	defaults := []ClientOption{
 		withConn(conn),
-		WithReplySubjecter(ReplySubjectNUID()),
+		WithReplySubjecter(ReplySubjectInbox()),
 	}
 	opts = append(defaults, opts...)
 	c := &clientImpl{}
@@ -99,7 +99,7 @@ type TypedClient[A any, R any] interface {
 func NewTypedClient[A, R any](nc peanats.Connection, opts ...TypedClientOption[A, R]) TypedClient[A, R] {
 	defaults := []TypedClientOption[A, R]{
 		WithCodec[A, R](peanats.JsonCodec{}),
-		WithTypedReplySubjecter[A, R](ReplySubjectNUID()),
+		WithTypedReplySubjecter[A, R](ReplySubjectInbox()),
 	}
 	opts = append(defaults, opts...)
 	c := &typedClientImpl[A, R]{clientImpl: clientImpl{conn: nc}}

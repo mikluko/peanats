@@ -6,6 +6,7 @@ import (
 	"fmt"
 	mrand "math/rand"
 
+	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nuid"
 )
 
@@ -17,6 +18,13 @@ type ReplySubjecterFunc func() string
 
 func (f ReplySubjecterFunc) ReplySubject() string {
 	return f()
+}
+
+// ReplySubjectInbox returns reply subject generator based on nats.NewInbox
+func ReplySubjectInbox() ReplySubjecter {
+	return ReplySubjecterFunc(func() string {
+		return nats.NewInbox()
+	})
 }
 
 // ReplySubjectNUID returns fast stream reply subject generator

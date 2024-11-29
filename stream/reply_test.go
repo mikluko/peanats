@@ -10,6 +10,7 @@ func benchmarkReplySubject(b *testing.B, subj ReplySubjecter) {
 }
 
 func BenchmarkReplySubject(b *testing.B) {
+	b.Run("inbox", func(b *testing.B) { benchmarkReplySubject(b, ReplySubjectInbox()) })
 	b.Run("nuid", func(b *testing.B) { benchmarkReplySubject(b, ReplySubjectNUID()) })
 	b.Run("math/rand", func(b *testing.B) { benchmarkReplySubject(b, ReplySubjectRand()) })
 	b.Run("crypto/rand", func(b *testing.B) { benchmarkReplySubject(b, ReplySubjectCryptoRand()) })
