@@ -108,3 +108,16 @@ func WithNak() Middleware {
 		})
 	}
 }
+
+// WithAckOnArrival returns a middleware that ACKs the message immediately on arrival.
+func WithAckOnArrival() Middleware {
+	return func(next Handler) Handler {
+		return HandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
+			err := msg.Ack()
+			if err != nil {
+				return err
+			}
+			return next.Serve(ctx, msg)
+		})
+	}
+}
