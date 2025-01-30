@@ -48,7 +48,7 @@ func (p *publisherImpl) Header() *nats.Header {
 
 func (p *publisherImpl) Publish(data []byte) error {
 	if p.subject == "" {
-		return errors.New("reply subject is not set")
+		return errors.New("publish subject is not set")
 	}
 	if p.header == nil {
 		p.header = make(nats.Header)
