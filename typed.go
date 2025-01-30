@@ -47,7 +47,7 @@ func Typed[ArgT, ResT any](c Codec, f TypedHandler[ArgT, ResT]) Handler {
 			}
 		}
 		return f.Serve(
-			&typedPublisherImpl[ResT]{c, pub},
+			NewTypedPublisher[ResT](c, pub),
 			&typedRequestImpl[ArgT]{arg: arg, req: req},
 		)
 	})
@@ -68,6 +68,10 @@ func (r *typedRequestImpl[ArgT]) Header() nats.Header {
 
 func (r *typedRequestImpl[ArgT]) Payload() *ArgT {
 	return r.arg
+}
+
+func NewTypedPublisher[RS any](codec Codec, pub Publisher) TypedPublisher[RS] {
+	return &typedPublisherImpl[RS]{codec, pub}
 }
 
 type typedPublisherImpl[RS any] struct {
