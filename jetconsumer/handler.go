@@ -7,6 +7,7 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 
 	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/jetmessage"
 )
 
 type Handler interface {
@@ -18,23 +19,24 @@ type HandlerFunc func(ctx context.Context, msg jetstream.Msg) error
 func (f HandlerFunc) Serve(ctx context.Context, msg jetstream.Msg) error { return f(ctx, msg) }
 
 type TypedHandler[T any] interface {
-	Serve(context.Context, TypedMessage[T]) error
+	Serve(context.Context, jetmessage.TypedMessage[T]) error
 }
 
 type TypedHandlerFunc[T any] func(peanats.TypedRequest[T]) error
 
 func (f TypedHandlerFunc[T]) Serve(arg peanats.TypedRequest[T]) error { return f(arg) }
 
-func HandleType[T any](h TypedHandler[T]) Handler {
-	return messageHandlerImpl[T]{h}
+func HandleType[T any](c peanats.Codec, h TypedHandler[T]) Handler {
+	return messageHandlerImpl[T]{c, h}
 }
 
 type messageHandlerImpl[T any] struct {
+	c peanats.Codec
 	h TypedHandler[T]
 }
 
 func (h messageHandlerImpl[T]) Serve(ctx context.Context, msg jetstream.Msg) (err error) {
-	tm, err := message[T](msg)
+	tm, err := jetmessage.NewMessage[T](h.c, msg)
 	if err != nil {
 		return err
 	}

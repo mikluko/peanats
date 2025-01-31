@@ -1,9 +1,9 @@
-package jetconsumer
+package jetmessage
 
 import (
 	"github.com/nats-io/nats.go/jetstream"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
+
+	"github.com/mikluko/peanats"
 )
 
 type TypedMessage[T any] interface {
@@ -20,10 +20,10 @@ type requestImpl[T any] struct {
 
 func (r requestImpl[T]) Payload() *T { return r.obj }
 
-// message is TypedMessage factory function
-func message[T any](msg jetstream.Msg) (TypedMessage[T], error) {
+// NewMessage is TypedMessage factory function
+func NewMessage[T any](codec peanats.Codec, msg jetstream.Msg) (TypedMessage[T], error) {
 	obj := new(T)
-	err := protojson.Unmarshal(msg.Data(), any(obj).(proto.Message))
+	err := codec.Decode(msg.Data(), obj)
 	if err != nil {
 		return nil, err
 	}

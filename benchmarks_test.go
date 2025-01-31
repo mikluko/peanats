@@ -3,14 +3,17 @@ package peanats
 import (
 	"context"
 	"fmt"
+
 	"github.com/mikluko/peanats/examples/protojson/api"
+	"github.com/mikluko/peanats/testutil"
+
 	"testing"
 
 	"github.com/nats-io/nats.go"
 )
 
 func BenchmarkServer(b *testing.B) {
-	ns := RunNats(b)
+	ns := testutil.NatsServer(b)
 
 	sc, err := nats.Connect(ns.Addr().String())
 	if err != nil {
@@ -103,7 +106,7 @@ func benchmarkTyped[RQ, RS any](b *testing.B, codec Codec, rq *RQ, rs *RS) {
 	req.On("Subject").Return("foo").Times(b.N)
 	req.On("Data").Return(rqp).Times(b.N)
 
-	rsp, _ := codec.Encode(rs)
+	rsp, err := codec.Encode(rs)
 	if err != nil {
 		b.Fatalf("response encode failed: %s", err)
 	}

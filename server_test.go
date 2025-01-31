@@ -4,32 +4,16 @@ import (
 	"context"
 	"sync"
 	"testing"
-	"time"
 
-	natsrv "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mikluko/peanats/testutil"
 )
 
-func RunNats(tb testing.TB) *natsrv.Server {
-	srv := must(natsrv.NewServer(&natsrv.Options{
-		ServerName:    "test-server",
-		Host:          "127.0.0.1",
-		Port:          -1,
-		WriteDeadline: time.Second * 10,
-	}))
-
-	go srv.Start()
-	if !srv.ReadyForConnections(time.Second * 10) {
-		tb.Fatal("nats server failed to start")
-	}
-	tb.Cleanup(srv.Shutdown)
-	return srv
-}
-
 func TestServer(t *testing.T) {
-	ns := RunNats(t)
+	ns := testutil.NatsServer(t)
 
 	nc, err := nats.Connect(ns.Addr().String())
 	if err != nil {
