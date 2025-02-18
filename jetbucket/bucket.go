@@ -14,6 +14,7 @@ type bucket interface {
 
 type Bucket[T any] interface {
 	Get(ctx context.Context, key string) (Entry[T], error)
+	GetRevision(ctx context.Context, key string, rev uint64) (Entry[T], error)
 	Put(ctx context.Context, key string, mod *T) (uint64, error)
 	Update(ctx context.Context, key string, mod *T, rev uint64) (uint64, error)
 	Delete(ctx context.Context, key string, opts ...jetstream.KVDeleteOpt) error
@@ -72,6 +73,26 @@ func (s *bucketImpl[T]) deprefixed(key string) string {
 
 func (s *bucketImpl[T]) Get(ctx context.Context, key string) (Entry[T], error) {
 	raw, err := s.bucket.Get(ctx, s.prefixed(key))
+	if err != nil {
+		return nil, err
+	}
+	v := entryImpl[T]{
+		entry: raw,
+		key:   s.deprefixed(raw.Key()),
+	}
+	if raw.Operation() != jetstream.KeyValuePut {
+		return v, nil
+	}
+	v.value = new(T)
+	err = unmarshal(any(v.value), raw.Value())
+	if err != nil {
+		return v, err
+	}
+	return v, nil
+}
+
+func (s *bucketImpl[T]) GetRevision(ctx context.Context, key string, rev uint64) (Entry[T], error) {
+	raw, err := s.bucket.GetRevision(ctx, s.prefixed(key), rev)
 	if err != nil {
 		return nil, err
 	}

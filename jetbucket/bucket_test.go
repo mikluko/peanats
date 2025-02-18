@@ -63,6 +63,25 @@ func TestBucket_Get(t *testing.T) {
 	})
 }
 
+func TestBucket_GetRevision(t *testing.T) {
+	key := "parson.had.a.dog"
+
+	ne := newEntryMock(t)
+	ne.OnKey().Return(key).Once()
+	ne.OnOperation().TypedReturns(jetstream.KeyValuePut).Once()
+	ne.OnValue().TypedReturns([]byte(`{"name":"balooney"}`)).Once()
+
+	nb := newBucketMock(t)
+	nb.OnGetRevision(key, uint64(1)).TypedReturns(ne, nil)
+
+	b := NewBucket[TestModel](nb)
+	v, err := b.GetRevision(context.TODO(), key, 1)
+	require.NoError(t, err)
+	require.NotNil(t, v)
+
+	assert.Equal(t, TestModel{Name: "balooney"}, *v.Value())
+}
+
 func TestBucket_Put(t *testing.T) {
 	key := "parson.had.a.dog"
 	mod := TestModel{Name: "balooney"}
