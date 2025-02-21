@@ -9,6 +9,8 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 
 	"github.com/mikluko/peanats"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Middleware func(handler Handler) Handler
@@ -40,6 +42,10 @@ func WithAccessLog(logger *slog.Logger, opts ...AccessLogOption) Middleware {
 			err := next.Serve(ctx, msg)
 			if err != nil {
 				return err
+			}
+			sc := trace.SpanFromContext(ctx).SpanContext()
+			if sc.HasTraceID() {
+				log = log.With("trace-id", sc.TraceID())
 			}
 			log.Log(ctx, params.level, params.message, "latency", time.Since(t))
 			return nil
