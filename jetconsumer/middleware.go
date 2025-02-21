@@ -2,11 +2,13 @@ package jetconsumer
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log/slog"
 	"time"
 
 	"github.com/nats-io/nats.go/jetstream"
+
+	"github.com/mikluko/peanats"
 )
 
 type Middleware func(handler Handler) Handler
@@ -81,27 +83,35 @@ func WithErrorLog(logger *slog.Logger, propagate bool) Middleware {
 	}
 }
 
+// ErrAck is an error that signals WithAck middleware that the message should be ACKed
+// even though the handler returned an error.
+var ErrAck = errors.New("ack on error")
+
 // WithAck returns a middleware that ACKs the message after handling it successfully.
 func WithAck() Middleware {
 	return func(next Handler) Handler {
 		return HandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
 			err := next.Serve(ctx, msg)
-			if err != nil {
+			if err != nil && !errors.Is(err, ErrAck) {
 				return err
 			}
-			return msg.Ack()
+			return errors.Join(msg.Ack(), err)
 		})
 	}
 }
+
+// ErrNoNak is an error that signals WithNak middleware that the message should NOT be NAKed
+// even though the handler returned an error.
+var ErrNoNak = errors.New("no nak on error")
 
 // WithNak returns a middleware that NAKs the message if the handler returns an error.
 func WithNak() Middleware {
 	return func(next Handler) Handler {
 		return HandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
 			serveErr := next.Serve(ctx, msg)
-			if serveErr != nil {
+			if serveErr != nil && !errors.Is(serveErr, ErrNoNak) {
 				if nakErr := msg.Nak(); nakErr != nil {
-					return fmt.Errorf("%w: %w", nakErr, serveErr)
+					return errors.Join(nakErr, serveErr)
 				}
 			}
 			return serveErr
@@ -116,6 +126,33 @@ func WithAckOnArrival() Middleware {
 			err := msg.Ack()
 			if err != nil {
 				return err
+			}
+			return next.Serve(ctx, msg)
+		})
+	}
+}
+
+type Route interface {
+	peanats.Matcher
+	Handler
+}
+
+type routeImpl struct {
+	peanats.Matcher
+	Handler
+}
+
+func Handle(subj string, handler Handler) Route {
+	return &routeImpl{peanats.NewMatcher(subj), handler}
+}
+
+func Router(routes ...Route) Middleware {
+	return func(next Handler) Handler {
+		return HandlerFunc(func(ctx context.Context, msg jetstream.Msg) error {
+			for _, route := range routes {
+				if route.Match(msg.Subject()) {
+					return route.Serve(ctx, msg)
+				}
 			}
 			return next.Serve(ctx, msg)
 		})
