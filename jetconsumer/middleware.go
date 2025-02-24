@@ -22,6 +22,15 @@ func ChainMiddleware(h Handler, mws ...Middleware) Handler {
 	return h
 }
 
+type TypedMiddleware[T any] func(handler TypedHandler[T]) TypedHandler[T]
+
+func ChainTypedMiddleware[T any](h TypedHandler[T], mws ...TypedMiddleware[T]) TypedHandler[T] {
+	for i := 0; i < len(mws); i++ {
+		h = mws[i](h)
+	}
+	return h
+}
+
 // WithAccessLog returns a middleware that logs access using the provided slog.Logger.
 func WithAccessLog(logger *slog.Logger, opts ...AccessLogOption) Middleware {
 	params := &accessLogParams{
