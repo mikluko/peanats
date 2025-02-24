@@ -22,9 +22,11 @@ type TypedHandler[T any] interface {
 	Serve(context.Context, jetmessage.TypedMessage[T]) error
 }
 
-type TypedHandlerFunc[T any] func(peanats.TypedRequest[T]) error
+type TypedHandlerFunc[T any] func(context.Context, jetmessage.TypedMessage[T]) error
 
-func (f TypedHandlerFunc[T]) Serve(arg peanats.TypedRequest[T]) error { return f(arg) }
+func (f TypedHandlerFunc[T]) Serve(ctx context.Context, msg jetmessage.TypedMessage[T]) error {
+	return f(ctx, msg)
+}
 
 func HandleType[T any](c peanats.Codec, h TypedHandler[T]) Handler {
 	return messageHandlerImpl[T]{c, h}
