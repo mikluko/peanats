@@ -18,8 +18,8 @@ type bucket interface {
 type Bucket[T any] interface {
 	Get(ctx context.Context, key string) (Entry[T], error)
 	GetRevision(ctx context.Context, key string, rev uint64) (Entry[T], error)
-	Put(ctx context.Context, entry PutUpdateEntry[T]) (uint64, error)
-	Update(ctx context.Context, entry PutUpdateEntry[T], rev uint64) (uint64, error)
+	Put(ctx context.Context, entry PutEntry[T]) (uint64, error)
+	Update(ctx context.Context, entry UpdateEntry[T]) (uint64, error)
 	Delete(ctx context.Context, key string, opts ...DeleteOption) error
 	Watch(ctx context.Context, match string, opts ...WatcherOption) (Watcher[T], error)
 	WatchAll(ctx context.Context, opts ...WatcherOption) (Watcher[T], error)
@@ -103,13 +103,7 @@ func (s *bucketImpl[T]) GetRevision(ctx context.Context, key string, rev uint64)
 	return s.get(raw)
 }
 
-type PutUpdateEntry[T any] interface {
-	Key() string
-	Header() textproto.MIMEHeader
-	Value() *T
-}
-
-func (s *bucketImpl[T]) Put(ctx context.Context, entry PutUpdateEntry[T]) (uint64, error) {
+func (s *bucketImpl[T]) Put(ctx context.Context, entry PutEntry[T]) (uint64, error) {
 	b, err := encode(entry.Header(), entry.Value())
 	if err != nil {
 		return 0, err
@@ -117,12 +111,12 @@ func (s *bucketImpl[T]) Put(ctx context.Context, entry PutUpdateEntry[T]) (uint6
 	return s.bucket.Put(ctx, s.prefixed(entry.Key()), b)
 }
 
-func (s *bucketImpl[T]) Update(ctx context.Context, entry PutUpdateEntry[T], rev uint64) (uint64, error) {
+func (s *bucketImpl[T]) Update(ctx context.Context, entry UpdateEntry[T]) (uint64, error) {
 	b, err := encode(entry.Header(), entry.Value())
 	if err != nil {
 		return 0, err
 	}
-	return s.bucket.Update(ctx, s.prefixed(entry.Key()), b, rev)
+	return s.bucket.Update(ctx, s.prefixed(entry.Key()), b, entry.Revision())
 }
 
 type bucketImplUpdateParams struct {

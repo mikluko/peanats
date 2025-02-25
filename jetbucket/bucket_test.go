@@ -10,25 +10,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type testPutEntryImpl struct {
+type testPutUpdateEntryImpl struct {
 	key string
 	hdr textproto.MIMEHeader
 	mod *testModel
+	rev uint64
 }
 
-func (t *testPutEntryImpl) Key() string {
+func (t *testPutUpdateEntryImpl) Key() string {
 	return t.key
 }
 
-func (t *testPutEntryImpl) Header() textproto.MIMEHeader {
+func (t *testPutUpdateEntryImpl) Header() textproto.MIMEHeader {
 	return t.hdr
 }
 
-func (t *testPutEntryImpl) Value() *testModel {
+func (t *testPutUpdateEntryImpl) Value() *testModel {
 	return t.mod
 }
 
-var _ PutUpdateEntry[testModel] = (*testPutEntryImpl)(nil)
+func (t *testPutUpdateEntryImpl) Revision() uint64 {
+	return t.rev
+}
+
+var (
+	_ PutEntry[testModel]    = (*testPutUpdateEntryImpl)(nil)
+	_ UpdateEntry[testModel] = (*testPutUpdateEntryImpl)(nil)
+)
 
 func TestBucket_New(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
@@ -101,7 +109,7 @@ func TestBucket_GetRevision(t *testing.T) {
 
 func TestBucket_Put(t *testing.T) {
 	const expect = "----\r\nContent-Type: application/json\r\nX-Breed: shavka\r\n\r\n" + `{"name":"balooney"}`
-	e := testPutEntryImpl{
+	e := testPutUpdateEntryImpl{
 		key: "parson.had.a.dog",
 		hdr: textproto.MIMEHeader{"X-Breed": []string{"shavka"}},
 		mod: &testModel{Name: "balooney"},
@@ -118,10 +126,11 @@ func TestBucket_Put(t *testing.T) {
 }
 
 func TestBucket_Update(t *testing.T) {
-	e := testPutEntryImpl{
+	e := testPutUpdateEntryImpl{
 		key: "parson.had.a.dog",
 		hdr: textproto.MIMEHeader{"X-Breed": []string{"shavka"}},
 		mod: &testModel{Name: "balooney"},
+		rev: 1,
 	}
 
 	rb := newBucketMock(t)
@@ -129,7 +138,7 @@ func TestBucket_Update(t *testing.T) {
 	rb.OnUpdate(e.key, []byte(expect), 1).TypedReturns(uint64(2), nil)
 
 	b := NewBucket[testModel](rb)
-	rev, err := b.Update(context.TODO(), &e, 1)
+	rev, err := b.Update(context.TODO(), &e)
 
 	require.NoError(t, err)
 	assert.Equal(t, uint64(2), rev)

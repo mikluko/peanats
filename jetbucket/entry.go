@@ -22,6 +22,19 @@ type Entry[T any] interface {
 	Operation() jetstream.KeyValueOp
 }
 
+type PutEntry[T any] interface {
+	Key() string
+	Header() textproto.MIMEHeader
+	Value() *T
+}
+
+type UpdateEntry[T any] interface {
+	Key() string
+	Header() textproto.MIMEHeader
+	Value() *T
+	Revision() uint64
+}
+
 var _ Entry[any] = (*entryImpl[any])(nil)
 
 type entryImpl[T any] struct {
