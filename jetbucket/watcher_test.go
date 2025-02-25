@@ -12,7 +12,7 @@ func TestWatcher(t *testing.T) {
 	up0 := newEntryMock(t)
 	up0.OnKey().Return("parson.had.a.dog").Once()
 	up0.OnOperation().TypedReturns(jetstream.KeyValuePut).Once()
-	up0.OnValue().TypedReturns([]byte(`{"name":"balooney"}`)).Once()
+	up0.OnValue().TypedReturns([]byte("----\r\nContent-Type: application/json\r\nX-Breed: shavka\r\n\r\n" + `{"name":"balooney"}`)).Once()
 
 	up1 := newEntryMock(t)
 	up1.OnKey().Return("parson.had.a.cat").Once()
@@ -28,13 +28,13 @@ func TestWatcher(t *testing.T) {
 	nw := newWatcherMock(t)
 	nw.OnUpdates().TypedReturns(ch)
 
-	w := NewWatcher[TestModel](nw, WatcherPrefix("parson"))
+	w := NewWatcher[testModel](nw, WatcherPrefix("parson"))
 
 	e, err := w.Next()
 	require.NoError(t, err)
 	assert.NotNil(t, e.Value())
 	assert.Equal(t, "had.a.dog", e.Key())
-	assert.Equal(t, TestModel{Name: "balooney"}, *e.Value())
+	assert.Equal(t, testModel{Name: "balooney"}, *e.Value())
 
 	e, err = w.Next()
 	require.ErrorIs(t, err, ErrInitialValuesOver)

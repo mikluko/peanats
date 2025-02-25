@@ -83,7 +83,7 @@ type watcherImpl[T any] struct {
 	metaOnly    bool
 }
 
-func (w *watcherImpl[T]) Next() (Entry[T], error) {
+func (w *watcherImpl[T]) Next() (_ Entry[T], err error) {
 	for raw := range w.watcher.Updates() {
 		// nats will send a nil entry when it has received all initial values
 		if raw == nil {
@@ -102,10 +102,9 @@ func (w *watcherImpl[T]) Next() (Entry[T], error) {
 		if w.metaOnly {
 			return v, nil
 		}
-		v.value = new(T)
-		err := unmarshal(any(v.value), raw.Value())
+		v.header, v.value, err = decode[T](raw.Value())
 		if err != nil {
-			return v, err
+			return nil, err
 		}
 		return v, nil
 	}

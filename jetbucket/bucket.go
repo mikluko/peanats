@@ -3,9 +3,12 @@ package jetbucket
 import (
 	"context"
 	"fmt"
+	"net/textproto"
 	"strings"
 
 	"github.com/nats-io/nats.go/jetstream"
+
+	"github.com/mikluko/peanats"
 )
 
 type bucket interface {
@@ -15,15 +18,17 @@ type bucket interface {
 type Bucket[T any] interface {
 	Get(ctx context.Context, key string) (Entry[T], error)
 	GetRevision(ctx context.Context, key string, rev uint64) (Entry[T], error)
-	Put(ctx context.Context, key string, mod *T) (uint64, error)
-	Update(ctx context.Context, key string, mod *T, rev uint64) (uint64, error)
-	Delete(ctx context.Context, key string, opts ...jetstream.KVDeleteOpt) error
+	Put(ctx context.Context, entry PutUpdateEntry[T]) (uint64, error)
+	Update(ctx context.Context, entry PutUpdateEntry[T], rev uint64) (uint64, error)
+	Delete(ctx context.Context, key string, opts ...DeleteOption) error
 	Watch(ctx context.Context, match string, opts ...WatcherOption) (Watcher[T], error)
 	WatchAll(ctx context.Context, opts ...WatcherOption) (Watcher[T], error)
 }
 
 func NewBucket[T any](bucket bucket, opts ...BucketOption) Bucket[T] {
-	params := &bucketParams{}
+	params := &bucketParams{
+		codec: peanats.JsonCodec{},
+	}
 	for _, opt := range opts {
 		opt(params)
 	}
@@ -35,6 +40,7 @@ func NewBucket[T any](bucket bucket, opts ...BucketOption) Bucket[T] {
 
 type bucketParams struct {
 	prefix string
+	codec  peanats.Codec
 }
 
 type BucketOption func(opts *bucketParams)
@@ -49,6 +55,7 @@ func WithKeyPrefix(prefix string) BucketOption {
 type bucketImpl[T any] struct {
 	bucket bucket
 	prefix string
+	codec  peanats.Codec
 }
 
 func (s *bucketImpl[T]) prefixed(key string) string {
@@ -65,11 +72,7 @@ func (s *bucketImpl[T]) deprefixed(key string) string {
 	return strings.TrimPrefix(key, fmt.Sprintf("%s.", s.prefix))
 }
 
-func (s *bucketImpl[T]) Get(ctx context.Context, key string) (Entry[T], error) {
-	raw, err := s.bucket.Get(ctx, s.prefixed(key))
-	if err != nil {
-		return nil, err
-	}
+func (s *bucketImpl[T]) get(raw jetstream.KeyValueEntry) (_ Entry[T], err error) {
 	v := entryImpl[T]{
 		entry: raw,
 		key:   s.deprefixed(raw.Key()),
@@ -77,12 +80,19 @@ func (s *bucketImpl[T]) Get(ctx context.Context, key string) (Entry[T], error) {
 	if raw.Operation() != jetstream.KeyValuePut {
 		return v, nil
 	}
-	v.value = new(T)
-	err = unmarshal(any(v.value), raw.Value())
+	v.header, v.value, err = decode[T](raw.Value())
 	if err != nil {
-		return v, err
+		return nil, err
 	}
 	return v, nil
+}
+
+func (s *bucketImpl[T]) Get(ctx context.Context, key string) (Entry[T], error) {
+	raw, err := s.bucket.Get(ctx, s.prefixed(key))
+	if err != nil {
+		return nil, err
+	}
+	return s.get(raw)
 }
 
 func (s *bucketImpl[T]) GetRevision(ctx context.Context, key string, rev uint64) (Entry[T], error) {
@@ -90,38 +100,46 @@ func (s *bucketImpl[T]) GetRevision(ctx context.Context, key string, rev uint64)
 	if err != nil {
 		return nil, err
 	}
-	v := entryImpl[T]{
-		entry: raw,
-		key:   s.deprefixed(raw.Key()),
-	}
-	if raw.Operation() != jetstream.KeyValuePut {
-		return v, nil
-	}
-	v.value = new(T)
-	err = unmarshal(any(v.value), raw.Value())
-	if err != nil {
-		return v, err
-	}
-	return v, nil
+	return s.get(raw)
 }
 
-func (s *bucketImpl[T]) Put(ctx context.Context, key string, mod *T) (uint64, error) {
-	b, err := marshal(any(mod).(marshaler))
+type PutUpdateEntry[T any] interface {
+	Key() string
+	Header() textproto.MIMEHeader
+	Value() *T
+}
+
+func (s *bucketImpl[T]) Put(ctx context.Context, entry PutUpdateEntry[T]) (uint64, error) {
+	b, err := encode(entry.Header(), entry.Value())
 	if err != nil {
 		return 0, err
 	}
-	return s.bucket.Put(ctx, s.prefixed(key), b)
+	return s.bucket.Put(ctx, s.prefixed(entry.Key()), b)
 }
 
-func (s *bucketImpl[T]) Update(ctx context.Context, key string, mod *T, rev uint64) (uint64, error) {
-	b, err := marshal(any(mod).(marshaler))
+func (s *bucketImpl[T]) Update(ctx context.Context, entry PutUpdateEntry[T], rev uint64) (uint64, error) {
+	b, err := encode(entry.Header(), entry.Value())
 	if err != nil {
 		return 0, err
 	}
-	return s.bucket.Update(ctx, s.prefixed(key), b, rev)
+	return s.bucket.Update(ctx, s.prefixed(entry.Key()), b, rev)
 }
 
-func (s *bucketImpl[T]) Delete(ctx context.Context, key string, opts ...jetstream.KVDeleteOpt) error {
+type bucketImplUpdateParams struct {
+	header textproto.MIMEHeader
+}
+
+type UpdateOption func(params *bucketImplUpdateParams)
+
+func UpdateWithHeader(header textproto.MIMEHeader) UpdateOption {
+	return func(params *bucketImplUpdateParams) {
+		params.header = header
+	}
+}
+
+type DeleteOption = jetstream.KVDeleteOpt
+
+func (s *bucketImpl[T]) Delete(ctx context.Context, key string, opts ...DeleteOption) error {
 	return s.bucket.Delete(ctx, s.prefixed(key), opts...)
 }
 
