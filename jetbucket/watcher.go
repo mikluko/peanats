@@ -25,13 +25,16 @@ func NewWatcher[T any](w watcher, opts ...WatcherOption) Watcher[T] {
 		opt(&p)
 	}
 	return &watcherImpl[T]{
-		watcher: w,
-		prefix:  p.prefix,
+		watcher:  w,
+		prefix:   p.prefix,
+		metaOnly: p.metaOnly,
 	}
 }
 
 type watcherParams struct {
-	prefix string
+	prefix       string
+	metaOnly     bool
+	upstreamOpts []jetstream.WatchOpt
 }
 
 type WatcherOption func(params *watcherParams)
@@ -42,9 +45,42 @@ func WatcherPrefix(prefix string) WatcherOption {
 	}
 }
 
+func WatcherMetaOnly() WatcherOption {
+	return func(params *watcherParams) {
+		params.upstreamOpts = append(params.upstreamOpts, jetstream.MetaOnly())
+		params.metaOnly = true
+	}
+}
+
+func WatcherUpdatesOnly() WatcherOption {
+	return func(params *watcherParams) {
+		params.upstreamOpts = append(params.upstreamOpts, jetstream.UpdatesOnly())
+	}
+}
+
+func WatcherIgnoreDeletes() WatcherOption {
+	return func(params *watcherParams) {
+		params.upstreamOpts = append(params.upstreamOpts, jetstream.IgnoreDeletes())
+	}
+}
+
+func WatcherIncludeHistory() WatcherOption {
+	return func(params *watcherParams) {
+		params.upstreamOpts = append(params.upstreamOpts, jetstream.IncludeHistory())
+	}
+}
+
+func WatcherResumeFromRevision(revision uint64) WatcherOption {
+	return func(params *watcherParams) {
+		params.upstreamOpts = append(params.upstreamOpts, jetstream.ResumeFromRevision(revision))
+	}
+}
+
 type watcherImpl[T any] struct {
-	watcher watcher
-	prefix  string
+	watcher     watcher
+	watcherOpts []jetstream.WatchOpt
+	prefix      string
+	metaOnly    bool
 }
 
 func (w *watcherImpl[T]) Next() (Entry[T], error) {
@@ -61,6 +97,9 @@ func (w *watcherImpl[T]) Next() (Entry[T], error) {
 			v.key = strings.TrimPrefix(v.key, w.prefix+".")
 		}
 		if raw.Operation() != jetstream.KeyValuePut {
+			return v, nil
+		}
+		if w.metaOnly {
 			return v, nil
 		}
 		v.value = new(T)

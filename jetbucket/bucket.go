@@ -18,17 +18,11 @@ type Bucket[T any] interface {
 	Put(ctx context.Context, key string, mod *T) (uint64, error)
 	Update(ctx context.Context, key string, mod *T, rev uint64) (uint64, error)
 	Delete(ctx context.Context, key string, opts ...jetstream.KVDeleteOpt) error
-	Watch(ctx context.Context, match string, opts ...jetstream.WatchOpt) (Watcher[T], error)
-	WatchAll(ctx context.Context, opts ...jetstream.WatchOpt) (Watcher[T], error)
+	Watch(ctx context.Context, match string, opts ...WatcherOption) (Watcher[T], error)
+	WatchAll(ctx context.Context, opts ...WatcherOption) (Watcher[T], error)
 }
 
 func NewBucket[T any](bucket bucket, opts ...BucketOption) Bucket[T] {
-	if _, ok := any((*T)(nil)).(marshaler); !ok {
-		panic("model type doesn't implement marshaler")
-	}
-	if _, ok := any((*T)(nil)).(unmarshaler); !ok {
-		panic("model type doesn't implement unmarshaler")
-	}
 	params := &bucketParams{}
 	for _, opt := range opts {
 		opt(params)
@@ -131,14 +125,18 @@ func (s *bucketImpl[T]) Delete(ctx context.Context, key string, opts ...jetstrea
 	return s.bucket.Delete(ctx, s.prefixed(key), opts...)
 }
 
-func (s *bucketImpl[T]) Watch(ctx context.Context, match string, opts ...jetstream.WatchOpt) (Watcher[T], error) {
-	w, err := s.bucket.Watch(ctx, s.prefixed(match), opts...)
+func (s *bucketImpl[T]) Watch(ctx context.Context, match string, opts ...WatcherOption) (Watcher[T], error) {
+	params := watcherParams{}
+	for _, opt := range opts {
+		opt(&params)
+	}
+	w, err := s.bucket.Watch(ctx, s.prefixed(match), params.upstreamOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return NewWatcher[T](w, WatcherPrefix(s.prefix)), nil
+	return NewWatcher[T](w, append(opts, WatcherPrefix(s.prefix))...), nil
 }
 
-func (s *bucketImpl[T]) WatchAll(ctx context.Context, opts ...jetstream.WatchOpt) (Watcher[T], error) {
+func (s *bucketImpl[T]) WatchAll(ctx context.Context, opts ...WatcherOption) (Watcher[T], error) {
 	return s.Watch(ctx, ">", opts...)
 }
