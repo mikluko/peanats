@@ -32,9 +32,9 @@ func main() {
 	}
 	defer nc.Close()
 
-	h := peanats.ChainMessageMiddleware(
+	h := peanats.ChainMiddleware(
 		peaserve.Handler[request, response](&handler{}),
-		peanats.AccessLoggerMiddleware(peanats.NewSlogAccessLogger(slog.Default())),
+		peanats.AccessLogMiddleware(peanats.NewSlogAccessLogger(slog.Default())),
 	)
 	ch, err := peaserve.ServeChan(ctx, h)
 	if err != nil {

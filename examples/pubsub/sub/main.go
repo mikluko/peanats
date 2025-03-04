@@ -23,8 +23,11 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	handler := peasubscribe.Handler(peanats.ArgumentHandlerFunc[model](handleModel))
-	ch, err := peasubscribe.SubscribeChan(ctx, handler)
+	h := peanats.ChainMiddleware(
+		peasubscribe.Handler(peanats.ArgumentHandlerFunc[model](handleModel)),
+		peanats.AccessLogMiddleware(peanats.NewSlogAccessLogger(slog.Default())),
+	)
+	ch, err := peasubscribe.SubscribeChan(ctx, h)
 	if err != nil {
 		panic(err)
 	}
@@ -40,7 +43,6 @@ type model struct {
 	Msg string `json:"msg"`
 }
 
-func handleModel(ctx context.Context, d peanats.Dispatcher, a peanats.Argument[model]) {
-	obj := a.Payload()
-	slog.InfoContext(ctx, "received", "seq", obj.Seq, "msg", obj.Msg)
+func handleModel(ctx context.Context, _ peanats.Dispatcher, a peanats.Argument[model]) {
+	_ = a.Payload()
 }

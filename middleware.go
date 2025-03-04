@@ -7,7 +7,7 @@ import (
 
 type Middleware func(Handler) Handler
 
-func ChainMessageMiddleware(h Handler, mw ...Middleware) Handler {
+func ChainMiddleware(h Handler, mw ...Middleware) Handler {
 	for i := len(mw) - 1; i >= 0; i-- {
 		h = mw[i](h)
 	}
@@ -18,7 +18,7 @@ type AccessLogger interface {
 	Log(ctx context.Context, message string, args ...interface{})
 }
 
-func AccessLoggerMiddleware(log AccessLogger) Middleware {
+func AccessLogMiddleware(log AccessLogger) Middleware {
 	return func(h Handler) Handler {
 		return HandlerFunc(func(ctx context.Context, d Dispatcher, m Message) {
 			h.Handle(ctx, d, m)
