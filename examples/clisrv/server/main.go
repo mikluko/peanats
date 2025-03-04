@@ -34,7 +34,7 @@ func main() {
 
 	h := peanats.ChainMiddleware(
 		peaserve.Handler[request, response](&handler{}),
-		peanats.AccessLogMiddleware(peanats.NewSlogAccessLogger(slog.Default())),
+		peanats.AccessLogMiddleware(peanats.NewSlogLogger(slog.Default())),
 	)
 	ch, err := peaserve.ServeChan(ctx, h)
 	if err != nil {

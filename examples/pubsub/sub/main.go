@@ -25,7 +25,7 @@ func main() {
 
 	h := peanats.ChainMiddleware(
 		peasubscribe.Handler(peanats.ArgumentHandlerFunc[model](handleModel)),
-		peanats.AccessLogMiddleware(peanats.NewSlogAccessLogger(slog.Default())),
+		peanats.AccessLogMiddleware(peanats.NewSlogLogger(slog.Default())),
 	)
 	ch, err := peasubscribe.SubscribeChan(ctx, h)
 	if err != nil {
