@@ -3,6 +3,7 @@ package peanats
 import (
 	"context"
 	"net/textproto"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -83,6 +84,7 @@ type JetstreamMessage interface {
 	Nak(context.Context, ...NakOption) error
 	Term(context.Context, ...TermOption) error
 	InProgress(context.Context) error
+	Metadata() (JetstreamMetadata, error)
 }
 
 type AckOption func(*ackParams)
@@ -131,4 +133,54 @@ func (j *jetstreamMessageImpl) Term(_ context.Context, _ ...TermOption) error {
 
 func (j *jetstreamMessageImpl) InProgress(_ context.Context) error {
 	return j.m.InProgress()
+}
+
+func (j *jetstreamMessageImpl) Metadata() (JetstreamMetadata, error) {
+	m, err := j.m.Metadata()
+	if err != nil {
+		return nil, err
+	}
+	return &jetstreamMetadataImpl{m}, nil
+}
+
+type JetstreamMetadata interface {
+	Stream() string
+	StreamSequence() uint64
+	Consumer() string
+	ConsumerSequence() uint64
+	Timestamp() time.Time
+	NumDelivered() uint64
+	NumPending() uint64
+}
+
+type jetstreamMetadataImpl struct {
+	m *jetstream.MsgMetadata
+}
+
+func (j *jetstreamMetadataImpl) Stream() string {
+	return j.m.Stream
+}
+
+func (j *jetstreamMetadataImpl) StreamSequence() uint64 {
+	return j.m.Sequence.Stream
+}
+
+func (j *jetstreamMetadataImpl) Consumer() string {
+	return j.m.Consumer
+}
+
+func (j *jetstreamMetadataImpl) ConsumerSequence() uint64 {
+	return j.m.Sequence.Consumer
+}
+
+func (j *jetstreamMetadataImpl) Timestamp() time.Time {
+	return j.m.Timestamp
+}
+
+func (j *jetstreamMetadataImpl) NumDelivered() uint64 {
+	return j.m.NumDelivered
+}
+
+func (j *jetstreamMetadataImpl) NumPending() uint64 {
+	return j.m.NumPending
 }
