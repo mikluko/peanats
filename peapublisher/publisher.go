@@ -14,14 +14,21 @@ type params struct {
 	header peanats.Header
 }
 
-func WithHeader(k, v string) Option {
+// WithHeader sets the header for the message. It can be used multiple times, but each time it will
+// overwrite the previous value completely.
+func WithHeader(header peanats.Header) Option {
 	return func(p *params) {
-		p.header.Add(k, v)
+		p.header = header
 	}
 }
 
 func WithContentType(v string) Option {
-	return WithHeader(peanats.HeaderContentType, v)
+	return func(p *params) {
+		if p.header == nil {
+			p.header = peanats.Header{}
+		}
+		p.header.Set(peanats.HeaderContentType, v)
+	}
 }
 
 type Publisher interface {
