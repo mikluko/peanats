@@ -1,4 +1,4 @@
-package peaconsume
+package peaconsumer
 
 import (
 	"context"

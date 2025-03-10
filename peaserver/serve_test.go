@@ -1,4 +1,4 @@
-package peaserve
+package peaserver
 
 import (
 	"context"

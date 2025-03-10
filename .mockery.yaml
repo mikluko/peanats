@@ -1,0 +1,11 @@
+resolve-type-alias: false
+issue-845-fix:      true
+with-expecter:      true
+dir:                "{{.InterfaceDir}}/mock"
+outpkg:             "{{.PackageName}}mock"
+mockname:           "{{.InterfaceName}}"
+filename:           "{{.InterfaceName|lower}}.go"
+inpackage:          true
+packages:
+  github.com/mikluko/peanats/:
+    interfaces:

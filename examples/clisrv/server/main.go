@@ -9,7 +9,7 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"github.com/mikluko/peanats"
-	"github.com/mikluko/peanats/peaserve"
+	"github.com/mikluko/peanats/peaserver"
 )
 
 type request struct {
@@ -33,10 +33,10 @@ func main() {
 	defer nc.Close()
 
 	h := peanats.ChainMiddleware(
-		peaserve.Handler[request, response](&handler{}),
-		peanats.AccessLogMiddleware(peanats.NewSlogLogger(slog.Default())),
+		peaserver.Handler[request, response](&handler{}),
+		peanats.AccessLogMiddleware(peanats.WithAccessLogMiddlewareLogger(peanats.NewSlogLogger(slog.Default(), slog.LevelInfo))),
 	)
-	ch, err := peaserve.ServeChan(ctx, h)
+	ch, err := peaserver.ServeChan(ctx, h)
 	if err != nil {
 		panic(err)
 	}
@@ -50,7 +50,7 @@ type handler struct{}
 
 func (handler) Handle(ctx context.Context, d peanats.Dispatcher, a peanats.Argument[request]) {
 	rq := a.Payload()
-	dd := d.(peaserve.Dispatcher[response])
+	dd := d.(peaserver.Dispatcher[response])
 	err := dd.Respond(ctx, &response{
 		Seq:      rq.Seq,
 		Response: "response to " + rq.Request,

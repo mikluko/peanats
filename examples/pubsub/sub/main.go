@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/mikluko/peanats"
-	"github.com/mikluko/peanats/peasubscribe"
+	"github.com/mikluko/peanats/peasubscriber"
 
 	"os/signal"
 
@@ -24,10 +24,10 @@ func main() {
 	defer cancel()
 
 	h := peanats.ChainMiddleware(
-		peasubscribe.Handler(peanats.ArgumentHandlerFunc[model](handleModel)),
-		peanats.AccessLogMiddleware(peanats.NewSlogLogger(slog.Default())),
+		peasubscriber.Handler(peanats.ArgumentHandlerFunc[model](handleModel)),
+		peanats.AccessLogMiddleware(peanats.WithAccessLogMiddlewareLogger(peanats.NewSlogLogger(slog.Default(), slog.LevelInfo))),
 	)
-	ch, err := peasubscribe.SubscribeChan(ctx, h)
+	ch, err := peasubscriber.SubscribeChan(ctx, h)
 	if err != nil {
 		panic(err)
 	}
