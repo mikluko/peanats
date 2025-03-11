@@ -48,14 +48,32 @@ func ChooseCodec(header Header) Codec {
 	return JsonCodec{}
 }
 
+type ContentType uint16
+
 const (
 	HeaderContentType = "Content-Type"
 
-	ContentTypeJson      = "application/json"
-	ContentTypeProtojson = "application/protojson"
-	ContentTypePrototext = "application/prototext"
-	ContentTypeProtobin  = "application/protobin"
+	_ ContentType = iota
+	ContentTypeJson
+	ContentTypeProtojson
+	ContentTypePrototext
+	ContentTypeProtobin
 )
+
+func (c ContentType) String() string {
+	switch c {
+	case ContentTypeJson:
+		return "application/json"
+	case ContentTypeProtojson:
+		return "application/protojson"
+	case ContentTypePrototext:
+		return "application/prototext"
+	case ContentTypeProtobin:
+		return "application/protobin"
+	default:
+		panic(fmt.Sprintf("unknown content type: %d", c))
+	}
+}
 
 type JsonCodec struct{}
 
@@ -68,11 +86,11 @@ func (JsonCodec) Decode(data []byte, vPtr any) error {
 }
 
 func (JsonCodec) SetHeader(header Header) {
-	header.Set(HeaderContentType, ContentTypeJson)
+	header.Set(HeaderContentType, ContentTypeJson.String())
 }
 
 func (JsonCodec) MatchHeader(header Header) bool {
-	return header.Get(HeaderContentType) == ContentTypeJson
+	return header.Get(HeaderContentType) == ContentTypeJson.String()
 }
 
 type ProtobinCodec struct{}
@@ -92,11 +110,11 @@ func (ProtobinCodec) Decode(data []byte, vPtr any) error {
 }
 
 func (ProtobinCodec) SetHeader(header Header) {
-	header.Set(HeaderContentType, ContentTypeProtobin)
+	header.Set(HeaderContentType, ContentTypeProtobin.String())
 }
 
 func (ProtobinCodec) MatchHeader(header Header) bool {
-	return header.Get(HeaderContentType) == ContentTypeProtobin
+	return header.Get(HeaderContentType) == ContentTypeProtobin.String()
 }
 
 type ProtojsonCodec struct{}
@@ -116,11 +134,11 @@ func (ProtojsonCodec) Decode(data []byte, vPtr any) error {
 }
 
 func (ProtojsonCodec) SetHeader(header Header) {
-	header.Set(HeaderContentType, ContentTypeProtojson)
+	header.Set(HeaderContentType, ContentTypeProtojson.String())
 }
 
 func (ProtojsonCodec) MatchHeader(header Header) bool {
-	return header.Get(HeaderContentType) == ContentTypeProtojson
+	return header.Get(HeaderContentType) == ContentTypeProtojson.String()
 }
 
 type PrototextCodec struct{}
@@ -140,9 +158,9 @@ func (PrototextCodec) Decode(data []byte, vPtr any) error {
 }
 
 func (PrototextCodec) SetHeader(header Header) {
-	header.Set(HeaderContentType, ContentTypePrototext)
+	header.Set(HeaderContentType, ContentTypePrototext.String())
 }
 
 func (PrototextCodec) MatchHeader(header Header) bool {
-	return header.Get(HeaderContentType) == ContentTypePrototext
+	return header.Get(HeaderContentType) == ContentTypePrototext.String()
 }
