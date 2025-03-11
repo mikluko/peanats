@@ -140,6 +140,10 @@ func (_c *bucketBucketCall) OnListKeys(opts []jetstream.WatchOpt) *bucketListKey
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketBucketCall) OnListKeysFiltered(filters []string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketBucketCall) OnPurge(key string, opts []jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -170,6 +174,10 @@ func (_c *bucketBucketCall) OnWatch(keys string, opts []jetstream.WatchOpt) *buc
 
 func (_c *bucketBucketCall) OnWatchAll(opts []jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketBucketCall) OnWatchFiltered(keys []string, opts []jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketBucketCall) OnBucketRaw() *bucketBucketCall {
@@ -204,6 +212,10 @@ func (_c *bucketBucketCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall 
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketBucketCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketBucketCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -234,6 +246,10 @@ func (_c *bucketBucketCall) OnWatchRaw(keys interface{}, opts interface{}) *buck
 
 func (_c *bucketBucketCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketBucketCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) Create(_ context.Context, key string, value []byte) (uint64, error) {
@@ -353,6 +369,10 @@ func (_c *bucketCreateCall) OnListKeys(opts []jetstream.WatchOpt) *bucketListKey
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketCreateCall) OnListKeysFiltered(filters []string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketCreateCall) OnPurge(key string, opts []jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -383,6 +403,10 @@ func (_c *bucketCreateCall) OnWatch(keys string, opts []jetstream.WatchOpt) *buc
 
 func (_c *bucketCreateCall) OnWatchAll(opts []jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketCreateCall) OnWatchFiltered(keys []string, opts []jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketCreateCall) OnBucketRaw() *bucketBucketCall {
@@ -417,6 +441,10 @@ func (_c *bucketCreateCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall 
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketCreateCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketCreateCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -447,6 +475,10 @@ func (_c *bucketCreateCall) OnWatchRaw(keys interface{}, opts interface{}) *buck
 
 func (_c *bucketCreateCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketCreateCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) Delete(_ context.Context, key string, opts ...jetstream.KVDeleteOpt) error {
@@ -565,6 +597,10 @@ func (_c *bucketDeleteCall) OnListKeys(opts ...jetstream.WatchOpt) *bucketListKe
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketDeleteCall) OnListKeysFiltered(filters ...string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketDeleteCall) OnPurge(key string, opts ...jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -595,6 +631,10 @@ func (_c *bucketDeleteCall) OnWatch(keys string, opts ...jetstream.WatchOpt) *bu
 
 func (_c *bucketDeleteCall) OnWatchAll(opts ...jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketDeleteCall) OnWatchFiltered(keys []string, opts ...jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketDeleteCall) OnBucketRaw() *bucketBucketCall {
@@ -629,6 +669,10 @@ func (_c *bucketDeleteCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall 
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketDeleteCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketDeleteCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -659,6 +703,10 @@ func (_c *bucketDeleteCall) OnWatchRaw(keys interface{}, opts interface{}) *buck
 
 func (_c *bucketDeleteCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketDeleteCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) Get(_ context.Context, key string) (jetstream.KeyValueEntry, error) {
@@ -777,6 +825,10 @@ func (_c *bucketGetCall) OnListKeys(opts []jetstream.WatchOpt) *bucketListKeysCa
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketGetCall) OnListKeysFiltered(filters []string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketGetCall) OnPurge(key string, opts []jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -807,6 +859,10 @@ func (_c *bucketGetCall) OnWatch(keys string, opts []jetstream.WatchOpt) *bucket
 
 func (_c *bucketGetCall) OnWatchAll(opts []jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketGetCall) OnWatchFiltered(keys []string, opts []jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketGetCall) OnBucketRaw() *bucketBucketCall {
@@ -841,6 +897,10 @@ func (_c *bucketGetCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall {
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketGetCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketGetCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -871,6 +931,10 @@ func (_c *bucketGetCall) OnWatchRaw(keys interface{}, opts interface{}) *bucketW
 
 func (_c *bucketGetCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketGetCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) GetRevision(_ context.Context, key string, revision uint64) (jetstream.KeyValueEntry, error) {
@@ -990,6 +1054,10 @@ func (_c *bucketGetRevisionCall) OnListKeys(opts []jetstream.WatchOpt) *bucketLi
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketGetRevisionCall) OnListKeysFiltered(filters []string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketGetRevisionCall) OnPurge(key string, opts []jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -1020,6 +1088,10 @@ func (_c *bucketGetRevisionCall) OnWatch(keys string, opts []jetstream.WatchOpt)
 
 func (_c *bucketGetRevisionCall) OnWatchAll(opts []jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketGetRevisionCall) OnWatchFiltered(keys []string, opts []jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketGetRevisionCall) OnBucketRaw() *bucketBucketCall {
@@ -1054,6 +1126,10 @@ func (_c *bucketGetRevisionCall) OnListKeysRaw(opts interface{}) *bucketListKeys
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketGetRevisionCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketGetRevisionCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -1084,6 +1160,10 @@ func (_c *bucketGetRevisionCall) OnWatchRaw(keys interface{}, opts interface{}) 
 
 func (_c *bucketGetRevisionCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketGetRevisionCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) History(_ context.Context, key string, opts ...jetstream.WatchOpt) ([]jetstream.KeyValueEntry, error) {
@@ -1203,6 +1283,10 @@ func (_c *bucketHistoryCall) OnListKeys(opts ...jetstream.WatchOpt) *bucketListK
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketHistoryCall) OnListKeysFiltered(filters ...string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketHistoryCall) OnPurge(key string, opts ...jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -1233,6 +1317,10 @@ func (_c *bucketHistoryCall) OnWatch(keys string, opts ...jetstream.WatchOpt) *b
 
 func (_c *bucketHistoryCall) OnWatchAll(opts ...jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketHistoryCall) OnWatchFiltered(keys []string, opts ...jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketHistoryCall) OnBucketRaw() *bucketBucketCall {
@@ -1267,6 +1355,10 @@ func (_c *bucketHistoryCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketHistoryCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketHistoryCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -1297,6 +1389,10 @@ func (_c *bucketHistoryCall) OnWatchRaw(keys interface{}, opts interface{}) *buc
 
 func (_c *bucketHistoryCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketHistoryCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) Keys(_ context.Context, opts ...jetstream.WatchOpt) ([]string, error) {
@@ -1415,6 +1511,10 @@ func (_c *bucketKeysCall) OnListKeys(opts ...jetstream.WatchOpt) *bucketListKeys
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketKeysCall) OnListKeysFiltered(filters ...string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketKeysCall) OnPurge(key string, opts ...jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -1445,6 +1545,10 @@ func (_c *bucketKeysCall) OnWatch(keys string, opts ...jetstream.WatchOpt) *buck
 
 func (_c *bucketKeysCall) OnWatchAll(opts ...jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketKeysCall) OnWatchFiltered(keys []string, opts ...jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketKeysCall) OnBucketRaw() *bucketBucketCall {
@@ -1479,6 +1583,10 @@ func (_c *bucketKeysCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall {
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketKeysCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketKeysCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -1509,6 +1617,10 @@ func (_c *bucketKeysCall) OnWatchRaw(keys interface{}, opts interface{}) *bucket
 
 func (_c *bucketKeysCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketKeysCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) ListKeys(_ context.Context, opts ...jetstream.WatchOpt) (jetstream.KeyLister, error) {
@@ -1627,6 +1739,10 @@ func (_c *bucketListKeysCall) OnListKeys(opts ...jetstream.WatchOpt) *bucketList
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketListKeysCall) OnListKeysFiltered(filters ...string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketListKeysCall) OnPurge(key string, opts ...jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -1657,6 +1773,10 @@ func (_c *bucketListKeysCall) OnWatch(keys string, opts ...jetstream.WatchOpt) *
 
 func (_c *bucketListKeysCall) OnWatchAll(opts ...jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketListKeysCall) OnWatchFiltered(keys []string, opts ...jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketListKeysCall) OnBucketRaw() *bucketBucketCall {
@@ -1691,6 +1811,10 @@ func (_c *bucketListKeysCall) OnListKeysRaw(opts interface{}) *bucketListKeysCal
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketListKeysCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketListKeysCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -1721,6 +1845,238 @@ func (_c *bucketListKeysCall) OnWatchRaw(keys interface{}, opts interface{}) *bu
 
 func (_c *bucketListKeysCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketListKeysCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
+}
+
+func (_m *bucketMock) ListKeysFiltered(_ context.Context, filters ...string) (jetstream.KeyLister, error) {
+	_ret := _m.Called(filters)
+
+	if _rf, ok := _ret.Get(0).(func(...string) (jetstream.KeyLister, error)); ok {
+		return _rf(filters...)
+	}
+
+	_ra0, _ := _ret.Get(0).(jetstream.KeyLister)
+	_rb1 := _ret.Error(1)
+
+	return _ra0, _rb1
+}
+
+func (_m *bucketMock) OnListKeysFiltered(filters ...string) *bucketListKeysFilteredCall {
+	return &bucketListKeysFilteredCall{Call: _m.Mock.On("ListKeysFiltered", filters), Parent: _m}
+}
+
+func (_m *bucketMock) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return &bucketListKeysFilteredCall{Call: _m.Mock.On("ListKeysFiltered", filters), Parent: _m}
+}
+
+type bucketListKeysFilteredCall struct {
+	*mock.Call
+	Parent *bucketMock
+}
+
+func (_c *bucketListKeysFilteredCall) Panic(msg string) *bucketListKeysFilteredCall {
+	_c.Call = _c.Call.Panic(msg)
+	return _c
+}
+
+func (_c *bucketListKeysFilteredCall) Once() *bucketListKeysFilteredCall {
+	_c.Call = _c.Call.Once()
+	return _c
+}
+
+func (_c *bucketListKeysFilteredCall) Twice() *bucketListKeysFilteredCall {
+	_c.Call = _c.Call.Twice()
+	return _c
+}
+
+func (_c *bucketListKeysFilteredCall) Times(i int) *bucketListKeysFilteredCall {
+	_c.Call = _c.Call.Times(i)
+	return _c
+}
+
+func (_c *bucketListKeysFilteredCall) WaitUntil(w <-chan time.Time) *bucketListKeysFilteredCall {
+	_c.Call = _c.Call.WaitUntil(w)
+	return _c
+}
+
+func (_c *bucketListKeysFilteredCall) After(d time.Duration) *bucketListKeysFilteredCall {
+	_c.Call = _c.Call.After(d)
+	return _c
+}
+
+func (_c *bucketListKeysFilteredCall) Run(fn func(args mock.Arguments)) *bucketListKeysFilteredCall {
+	_c.Call = _c.Call.Run(fn)
+	return _c
+}
+
+func (_c *bucketListKeysFilteredCall) Maybe() *bucketListKeysFilteredCall {
+	_c.Call = _c.Call.Maybe()
+	return _c
+}
+
+func (_c *bucketListKeysFilteredCall) TypedReturns(a jetstream.KeyLister, b error) *bucketListKeysFilteredCall {
+	_c.Call = _c.Return(a, b)
+	return _c
+}
+
+func (_c *bucketListKeysFilteredCall) ReturnsFn(fn func(...string) (jetstream.KeyLister, error)) *bucketListKeysFilteredCall {
+	_c.Call = _c.Return(fn)
+	return _c
+}
+
+func (_c *bucketListKeysFilteredCall) TypedRun(fn func(...string)) *bucketListKeysFilteredCall {
+	_c.Call = _c.Call.Run(func(args mock.Arguments) {
+		_filters, _ := args.Get(0).([]string)
+		fn(_filters...)
+	})
+	return _c
+}
+
+func (_c *bucketListKeysFilteredCall) OnBucket() *bucketBucketCall {
+	return _c.Parent.OnBucket()
+}
+
+func (_c *bucketListKeysFilteredCall) OnCreate(key string, value ...byte) *bucketCreateCall {
+	return _c.Parent.OnCreate(key, value)
+}
+
+func (_c *bucketListKeysFilteredCall) OnDelete(key string, opts ...jetstream.KVDeleteOpt) *bucketDeleteCall {
+	return _c.Parent.OnDelete(key, opts...)
+}
+
+func (_c *bucketListKeysFilteredCall) OnGet(key string) *bucketGetCall {
+	return _c.Parent.OnGet(key)
+}
+
+func (_c *bucketListKeysFilteredCall) OnGetRevision(key string, revision uint64) *bucketGetRevisionCall {
+	return _c.Parent.OnGetRevision(key, revision)
+}
+
+func (_c *bucketListKeysFilteredCall) OnHistory(key string, opts ...jetstream.WatchOpt) *bucketHistoryCall {
+	return _c.Parent.OnHistory(key, opts...)
+}
+
+func (_c *bucketListKeysFilteredCall) OnKeys(opts ...jetstream.WatchOpt) *bucketKeysCall {
+	return _c.Parent.OnKeys(opts...)
+}
+
+func (_c *bucketListKeysFilteredCall) OnListKeys(opts ...jetstream.WatchOpt) *bucketListKeysCall {
+	return _c.Parent.OnListKeys(opts...)
+}
+
+func (_c *bucketListKeysFilteredCall) OnListKeysFiltered(filters ...string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
+func (_c *bucketListKeysFilteredCall) OnPurge(key string, opts ...jetstream.KVDeleteOpt) *bucketPurgeCall {
+	return _c.Parent.OnPurge(key, opts...)
+}
+
+func (_c *bucketListKeysFilteredCall) OnPurgeDeletes(opts ...jetstream.KVPurgeOpt) *bucketPurgeDeletesCall {
+	return _c.Parent.OnPurgeDeletes(opts...)
+}
+
+func (_c *bucketListKeysFilteredCall) OnPut(key string, value ...byte) *bucketPutCall {
+	return _c.Parent.OnPut(key, value)
+}
+
+func (_c *bucketListKeysFilteredCall) OnPutString(key string, value string) *bucketPutStringCall {
+	return _c.Parent.OnPutString(key, value)
+}
+
+func (_c *bucketListKeysFilteredCall) OnStatus() *bucketStatusCall {
+	return _c.Parent.OnStatus()
+}
+
+func (_c *bucketListKeysFilteredCall) OnUpdate(key string, value []byte, revision uint64) *bucketUpdateCall {
+	return _c.Parent.OnUpdate(key, value, revision)
+}
+
+func (_c *bucketListKeysFilteredCall) OnWatch(keys string, opts ...jetstream.WatchOpt) *bucketWatchCall {
+	return _c.Parent.OnWatch(keys, opts...)
+}
+
+func (_c *bucketListKeysFilteredCall) OnWatchAll(opts ...jetstream.WatchOpt) *bucketWatchAllCall {
+	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketListKeysFilteredCall) OnWatchFiltered(keys []string, opts ...jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
+}
+
+func (_c *bucketListKeysFilteredCall) OnBucketRaw() *bucketBucketCall {
+	return _c.Parent.OnBucketRaw()
+}
+
+func (_c *bucketListKeysFilteredCall) OnCreateRaw(key interface{}, value interface{}) *bucketCreateCall {
+	return _c.Parent.OnCreateRaw(key, value)
+}
+
+func (_c *bucketListKeysFilteredCall) OnDeleteRaw(key interface{}, opts interface{}) *bucketDeleteCall {
+	return _c.Parent.OnDeleteRaw(key, opts)
+}
+
+func (_c *bucketListKeysFilteredCall) OnGetRaw(key interface{}) *bucketGetCall {
+	return _c.Parent.OnGetRaw(key)
+}
+
+func (_c *bucketListKeysFilteredCall) OnGetRevisionRaw(key interface{}, revision interface{}) *bucketGetRevisionCall {
+	return _c.Parent.OnGetRevisionRaw(key, revision)
+}
+
+func (_c *bucketListKeysFilteredCall) OnHistoryRaw(key interface{}, opts interface{}) *bucketHistoryCall {
+	return _c.Parent.OnHistoryRaw(key, opts)
+}
+
+func (_c *bucketListKeysFilteredCall) OnKeysRaw(opts interface{}) *bucketKeysCall {
+	return _c.Parent.OnKeysRaw(opts)
+}
+
+func (_c *bucketListKeysFilteredCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall {
+	return _c.Parent.OnListKeysRaw(opts)
+}
+
+func (_c *bucketListKeysFilteredCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
+func (_c *bucketListKeysFilteredCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
+	return _c.Parent.OnPurgeRaw(key, opts)
+}
+
+func (_c *bucketListKeysFilteredCall) OnPurgeDeletesRaw(opts interface{}) *bucketPurgeDeletesCall {
+	return _c.Parent.OnPurgeDeletesRaw(opts)
+}
+
+func (_c *bucketListKeysFilteredCall) OnPutRaw(key interface{}, value interface{}) *bucketPutCall {
+	return _c.Parent.OnPutRaw(key, value)
+}
+
+func (_c *bucketListKeysFilteredCall) OnPutStringRaw(key interface{}, value interface{}) *bucketPutStringCall {
+	return _c.Parent.OnPutStringRaw(key, value)
+}
+
+func (_c *bucketListKeysFilteredCall) OnStatusRaw() *bucketStatusCall {
+	return _c.Parent.OnStatusRaw()
+}
+
+func (_c *bucketListKeysFilteredCall) OnUpdateRaw(key interface{}, value interface{}, revision interface{}) *bucketUpdateCall {
+	return _c.Parent.OnUpdateRaw(key, value, revision)
+}
+
+func (_c *bucketListKeysFilteredCall) OnWatchRaw(keys interface{}, opts interface{}) *bucketWatchCall {
+	return _c.Parent.OnWatchRaw(keys, opts)
+}
+
+func (_c *bucketListKeysFilteredCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
+	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketListKeysFilteredCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) Purge(_ context.Context, key string, opts ...jetstream.KVDeleteOpt) error {
@@ -1839,6 +2195,10 @@ func (_c *bucketPurgeCall) OnListKeys(opts ...jetstream.WatchOpt) *bucketListKey
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketPurgeCall) OnListKeysFiltered(filters ...string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketPurgeCall) OnPurge(key string, opts ...jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -1869,6 +2229,10 @@ func (_c *bucketPurgeCall) OnWatch(keys string, opts ...jetstream.WatchOpt) *buc
 
 func (_c *bucketPurgeCall) OnWatchAll(opts ...jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketPurgeCall) OnWatchFiltered(keys []string, opts ...jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketPurgeCall) OnBucketRaw() *bucketBucketCall {
@@ -1903,6 +2267,10 @@ func (_c *bucketPurgeCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall {
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketPurgeCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketPurgeCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -1933,6 +2301,10 @@ func (_c *bucketPurgeCall) OnWatchRaw(keys interface{}, opts interface{}) *bucke
 
 func (_c *bucketPurgeCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketPurgeCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) PurgeDeletes(_ context.Context, opts ...jetstream.KVPurgeOpt) error {
@@ -2050,6 +2422,10 @@ func (_c *bucketPurgeDeletesCall) OnListKeys(opts ...jetstream.WatchOpt) *bucket
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketPurgeDeletesCall) OnListKeysFiltered(filters ...string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketPurgeDeletesCall) OnPurge(key string, opts ...jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -2080,6 +2456,10 @@ func (_c *bucketPurgeDeletesCall) OnWatch(keys string, opts ...jetstream.WatchOp
 
 func (_c *bucketPurgeDeletesCall) OnWatchAll(opts ...jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketPurgeDeletesCall) OnWatchFiltered(keys []string, opts ...jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketPurgeDeletesCall) OnBucketRaw() *bucketBucketCall {
@@ -2114,6 +2494,10 @@ func (_c *bucketPurgeDeletesCall) OnListKeysRaw(opts interface{}) *bucketListKey
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketPurgeDeletesCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketPurgeDeletesCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -2144,6 +2528,10 @@ func (_c *bucketPurgeDeletesCall) OnWatchRaw(keys interface{}, opts interface{})
 
 func (_c *bucketPurgeDeletesCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketPurgeDeletesCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) Put(_ context.Context, key string, value []byte) (uint64, error) {
@@ -2263,6 +2651,10 @@ func (_c *bucketPutCall) OnListKeys(opts []jetstream.WatchOpt) *bucketListKeysCa
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketPutCall) OnListKeysFiltered(filters []string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketPutCall) OnPurge(key string, opts []jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -2293,6 +2685,10 @@ func (_c *bucketPutCall) OnWatch(keys string, opts []jetstream.WatchOpt) *bucket
 
 func (_c *bucketPutCall) OnWatchAll(opts []jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketPutCall) OnWatchFiltered(keys []string, opts []jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketPutCall) OnBucketRaw() *bucketBucketCall {
@@ -2327,6 +2723,10 @@ func (_c *bucketPutCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall {
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketPutCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketPutCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -2357,6 +2757,10 @@ func (_c *bucketPutCall) OnWatchRaw(keys interface{}, opts interface{}) *bucketW
 
 func (_c *bucketPutCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketPutCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) PutString(_ context.Context, key string, value string) (uint64, error) {
@@ -2476,6 +2880,10 @@ func (_c *bucketPutStringCall) OnListKeys(opts []jetstream.WatchOpt) *bucketList
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketPutStringCall) OnListKeysFiltered(filters []string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketPutStringCall) OnPurge(key string, opts []jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -2506,6 +2914,10 @@ func (_c *bucketPutStringCall) OnWatch(keys string, opts []jetstream.WatchOpt) *
 
 func (_c *bucketPutStringCall) OnWatchAll(opts []jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketPutStringCall) OnWatchFiltered(keys []string, opts []jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketPutStringCall) OnBucketRaw() *bucketBucketCall {
@@ -2540,6 +2952,10 @@ func (_c *bucketPutStringCall) OnListKeysRaw(opts interface{}) *bucketListKeysCa
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketPutStringCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketPutStringCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -2570,6 +2986,10 @@ func (_c *bucketPutStringCall) OnWatchRaw(keys interface{}, opts interface{}) *b
 
 func (_c *bucketPutStringCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketPutStringCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) Status(_ context.Context) (jetstream.KeyValueStatus, error) {
@@ -2687,6 +3107,10 @@ func (_c *bucketStatusCall) OnListKeys(opts []jetstream.WatchOpt) *bucketListKey
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketStatusCall) OnListKeysFiltered(filters []string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketStatusCall) OnPurge(key string, opts []jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -2717,6 +3141,10 @@ func (_c *bucketStatusCall) OnWatch(keys string, opts []jetstream.WatchOpt) *buc
 
 func (_c *bucketStatusCall) OnWatchAll(opts []jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketStatusCall) OnWatchFiltered(keys []string, opts []jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketStatusCall) OnBucketRaw() *bucketBucketCall {
@@ -2751,6 +3179,10 @@ func (_c *bucketStatusCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall 
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketStatusCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketStatusCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -2781,6 +3213,10 @@ func (_c *bucketStatusCall) OnWatchRaw(keys interface{}, opts interface{}) *buck
 
 func (_c *bucketStatusCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketStatusCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) Update(_ context.Context, key string, value []byte, revision uint64) (uint64, error) {
@@ -2901,6 +3337,10 @@ func (_c *bucketUpdateCall) OnListKeys(opts []jetstream.WatchOpt) *bucketListKey
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketUpdateCall) OnListKeysFiltered(filters []string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketUpdateCall) OnPurge(key string, opts []jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -2931,6 +3371,10 @@ func (_c *bucketUpdateCall) OnWatch(keys string, opts []jetstream.WatchOpt) *buc
 
 func (_c *bucketUpdateCall) OnWatchAll(opts []jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketUpdateCall) OnWatchFiltered(keys []string, opts []jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketUpdateCall) OnBucketRaw() *bucketBucketCall {
@@ -2965,6 +3409,10 @@ func (_c *bucketUpdateCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall 
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketUpdateCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketUpdateCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -2995,6 +3443,10 @@ func (_c *bucketUpdateCall) OnWatchRaw(keys interface{}, opts interface{}) *buck
 
 func (_c *bucketUpdateCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketUpdateCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) Watch(_ context.Context, keys string, opts ...jetstream.WatchOpt) (jetstream.KeyWatcher, error) {
@@ -3114,6 +3566,10 @@ func (_c *bucketWatchCall) OnListKeys(opts ...jetstream.WatchOpt) *bucketListKey
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketWatchCall) OnListKeysFiltered(filters ...string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketWatchCall) OnPurge(key string, opts ...jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -3144,6 +3600,10 @@ func (_c *bucketWatchCall) OnWatch(keys string, opts ...jetstream.WatchOpt) *buc
 
 func (_c *bucketWatchCall) OnWatchAll(opts ...jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketWatchCall) OnWatchFiltered(keys []string, opts ...jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketWatchCall) OnBucketRaw() *bucketBucketCall {
@@ -3178,6 +3638,10 @@ func (_c *bucketWatchCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall {
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketWatchCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketWatchCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -3208,6 +3672,10 @@ func (_c *bucketWatchCall) OnWatchRaw(keys interface{}, opts interface{}) *bucke
 
 func (_c *bucketWatchCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketWatchCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 func (_m *bucketMock) WatchAll(_ context.Context, opts ...jetstream.WatchOpt) (jetstream.KeyWatcher, error) {
@@ -3326,6 +3794,10 @@ func (_c *bucketWatchAllCall) OnListKeys(opts ...jetstream.WatchOpt) *bucketList
 	return _c.Parent.OnListKeys(opts...)
 }
 
+func (_c *bucketWatchAllCall) OnListKeysFiltered(filters ...string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
 func (_c *bucketWatchAllCall) OnPurge(key string, opts ...jetstream.KVDeleteOpt) *bucketPurgeCall {
 	return _c.Parent.OnPurge(key, opts...)
 }
@@ -3356,6 +3828,10 @@ func (_c *bucketWatchAllCall) OnWatch(keys string, opts ...jetstream.WatchOpt) *
 
 func (_c *bucketWatchAllCall) OnWatchAll(opts ...jetstream.WatchOpt) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketWatchAllCall) OnWatchFiltered(keys []string, opts ...jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
 }
 
 func (_c *bucketWatchAllCall) OnBucketRaw() *bucketBucketCall {
@@ -3390,6 +3866,10 @@ func (_c *bucketWatchAllCall) OnListKeysRaw(opts interface{}) *bucketListKeysCal
 	return _c.Parent.OnListKeysRaw(opts)
 }
 
+func (_c *bucketWatchAllCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
 func (_c *bucketWatchAllCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
 	return _c.Parent.OnPurgeRaw(key, opts)
 }
@@ -3420,6 +3900,239 @@ func (_c *bucketWatchAllCall) OnWatchRaw(keys interface{}, opts interface{}) *bu
 
 func (_c *bucketWatchAllCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
 	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketWatchAllCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
+}
+
+func (_m *bucketMock) WatchFiltered(_ context.Context, keys []string, opts ...jetstream.WatchOpt) (jetstream.KeyWatcher, error) {
+	_ret := _m.Called(keys, opts)
+
+	if _rf, ok := _ret.Get(0).(func([]string, ...jetstream.WatchOpt) (jetstream.KeyWatcher, error)); ok {
+		return _rf(keys, opts...)
+	}
+
+	_ra0, _ := _ret.Get(0).(jetstream.KeyWatcher)
+	_rb1 := _ret.Error(1)
+
+	return _ra0, _rb1
+}
+
+func (_m *bucketMock) OnWatchFiltered(keys []string, opts ...jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return &bucketWatchFilteredCall{Call: _m.Mock.On("WatchFiltered", keys, opts), Parent: _m}
+}
+
+func (_m *bucketMock) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return &bucketWatchFilteredCall{Call: _m.Mock.On("WatchFiltered", keys, opts), Parent: _m}
+}
+
+type bucketWatchFilteredCall struct {
+	*mock.Call
+	Parent *bucketMock
+}
+
+func (_c *bucketWatchFilteredCall) Panic(msg string) *bucketWatchFilteredCall {
+	_c.Call = _c.Call.Panic(msg)
+	return _c
+}
+
+func (_c *bucketWatchFilteredCall) Once() *bucketWatchFilteredCall {
+	_c.Call = _c.Call.Once()
+	return _c
+}
+
+func (_c *bucketWatchFilteredCall) Twice() *bucketWatchFilteredCall {
+	_c.Call = _c.Call.Twice()
+	return _c
+}
+
+func (_c *bucketWatchFilteredCall) Times(i int) *bucketWatchFilteredCall {
+	_c.Call = _c.Call.Times(i)
+	return _c
+}
+
+func (_c *bucketWatchFilteredCall) WaitUntil(w <-chan time.Time) *bucketWatchFilteredCall {
+	_c.Call = _c.Call.WaitUntil(w)
+	return _c
+}
+
+func (_c *bucketWatchFilteredCall) After(d time.Duration) *bucketWatchFilteredCall {
+	_c.Call = _c.Call.After(d)
+	return _c
+}
+
+func (_c *bucketWatchFilteredCall) Run(fn func(args mock.Arguments)) *bucketWatchFilteredCall {
+	_c.Call = _c.Call.Run(fn)
+	return _c
+}
+
+func (_c *bucketWatchFilteredCall) Maybe() *bucketWatchFilteredCall {
+	_c.Call = _c.Call.Maybe()
+	return _c
+}
+
+func (_c *bucketWatchFilteredCall) TypedReturns(a jetstream.KeyWatcher, b error) *bucketWatchFilteredCall {
+	_c.Call = _c.Return(a, b)
+	return _c
+}
+
+func (_c *bucketWatchFilteredCall) ReturnsFn(fn func([]string, ...jetstream.WatchOpt) (jetstream.KeyWatcher, error)) *bucketWatchFilteredCall {
+	_c.Call = _c.Return(fn)
+	return _c
+}
+
+func (_c *bucketWatchFilteredCall) TypedRun(fn func([]string, ...jetstream.WatchOpt)) *bucketWatchFilteredCall {
+	_c.Call = _c.Call.Run(func(args mock.Arguments) {
+		_keys, _ := args.Get(0).([]string)
+		_opts, _ := args.Get(1).([]jetstream.WatchOpt)
+		fn(_keys, _opts...)
+	})
+	return _c
+}
+
+func (_c *bucketWatchFilteredCall) OnBucket() *bucketBucketCall {
+	return _c.Parent.OnBucket()
+}
+
+func (_c *bucketWatchFilteredCall) OnCreate(key string, value ...byte) *bucketCreateCall {
+	return _c.Parent.OnCreate(key, value)
+}
+
+func (_c *bucketWatchFilteredCall) OnDelete(key string, opts ...jetstream.KVDeleteOpt) *bucketDeleteCall {
+	return _c.Parent.OnDelete(key, opts...)
+}
+
+func (_c *bucketWatchFilteredCall) OnGet(key string) *bucketGetCall {
+	return _c.Parent.OnGet(key)
+}
+
+func (_c *bucketWatchFilteredCall) OnGetRevision(key string, revision uint64) *bucketGetRevisionCall {
+	return _c.Parent.OnGetRevision(key, revision)
+}
+
+func (_c *bucketWatchFilteredCall) OnHistory(key string, opts ...jetstream.WatchOpt) *bucketHistoryCall {
+	return _c.Parent.OnHistory(key, opts...)
+}
+
+func (_c *bucketWatchFilteredCall) OnKeys(opts ...jetstream.WatchOpt) *bucketKeysCall {
+	return _c.Parent.OnKeys(opts...)
+}
+
+func (_c *bucketWatchFilteredCall) OnListKeys(opts ...jetstream.WatchOpt) *bucketListKeysCall {
+	return _c.Parent.OnListKeys(opts...)
+}
+
+func (_c *bucketWatchFilteredCall) OnListKeysFiltered(filters ...string) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFiltered(filters...)
+}
+
+func (_c *bucketWatchFilteredCall) OnPurge(key string, opts ...jetstream.KVDeleteOpt) *bucketPurgeCall {
+	return _c.Parent.OnPurge(key, opts...)
+}
+
+func (_c *bucketWatchFilteredCall) OnPurgeDeletes(opts ...jetstream.KVPurgeOpt) *bucketPurgeDeletesCall {
+	return _c.Parent.OnPurgeDeletes(opts...)
+}
+
+func (_c *bucketWatchFilteredCall) OnPut(key string, value ...byte) *bucketPutCall {
+	return _c.Parent.OnPut(key, value)
+}
+
+func (_c *bucketWatchFilteredCall) OnPutString(key string, value string) *bucketPutStringCall {
+	return _c.Parent.OnPutString(key, value)
+}
+
+func (_c *bucketWatchFilteredCall) OnStatus() *bucketStatusCall {
+	return _c.Parent.OnStatus()
+}
+
+func (_c *bucketWatchFilteredCall) OnUpdate(key string, value []byte, revision uint64) *bucketUpdateCall {
+	return _c.Parent.OnUpdate(key, value, revision)
+}
+
+func (_c *bucketWatchFilteredCall) OnWatch(keys string, opts ...jetstream.WatchOpt) *bucketWatchCall {
+	return _c.Parent.OnWatch(keys, opts...)
+}
+
+func (_c *bucketWatchFilteredCall) OnWatchAll(opts ...jetstream.WatchOpt) *bucketWatchAllCall {
+	return _c.Parent.OnWatchAll(opts...)
+}
+
+func (_c *bucketWatchFilteredCall) OnWatchFiltered(keys []string, opts ...jetstream.WatchOpt) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFiltered(keys, opts...)
+}
+
+func (_c *bucketWatchFilteredCall) OnBucketRaw() *bucketBucketCall {
+	return _c.Parent.OnBucketRaw()
+}
+
+func (_c *bucketWatchFilteredCall) OnCreateRaw(key interface{}, value interface{}) *bucketCreateCall {
+	return _c.Parent.OnCreateRaw(key, value)
+}
+
+func (_c *bucketWatchFilteredCall) OnDeleteRaw(key interface{}, opts interface{}) *bucketDeleteCall {
+	return _c.Parent.OnDeleteRaw(key, opts)
+}
+
+func (_c *bucketWatchFilteredCall) OnGetRaw(key interface{}) *bucketGetCall {
+	return _c.Parent.OnGetRaw(key)
+}
+
+func (_c *bucketWatchFilteredCall) OnGetRevisionRaw(key interface{}, revision interface{}) *bucketGetRevisionCall {
+	return _c.Parent.OnGetRevisionRaw(key, revision)
+}
+
+func (_c *bucketWatchFilteredCall) OnHistoryRaw(key interface{}, opts interface{}) *bucketHistoryCall {
+	return _c.Parent.OnHistoryRaw(key, opts)
+}
+
+func (_c *bucketWatchFilteredCall) OnKeysRaw(opts interface{}) *bucketKeysCall {
+	return _c.Parent.OnKeysRaw(opts)
+}
+
+func (_c *bucketWatchFilteredCall) OnListKeysRaw(opts interface{}) *bucketListKeysCall {
+	return _c.Parent.OnListKeysRaw(opts)
+}
+
+func (_c *bucketWatchFilteredCall) OnListKeysFilteredRaw(filters interface{}) *bucketListKeysFilteredCall {
+	return _c.Parent.OnListKeysFilteredRaw(filters)
+}
+
+func (_c *bucketWatchFilteredCall) OnPurgeRaw(key interface{}, opts interface{}) *bucketPurgeCall {
+	return _c.Parent.OnPurgeRaw(key, opts)
+}
+
+func (_c *bucketWatchFilteredCall) OnPurgeDeletesRaw(opts interface{}) *bucketPurgeDeletesCall {
+	return _c.Parent.OnPurgeDeletesRaw(opts)
+}
+
+func (_c *bucketWatchFilteredCall) OnPutRaw(key interface{}, value interface{}) *bucketPutCall {
+	return _c.Parent.OnPutRaw(key, value)
+}
+
+func (_c *bucketWatchFilteredCall) OnPutStringRaw(key interface{}, value interface{}) *bucketPutStringCall {
+	return _c.Parent.OnPutStringRaw(key, value)
+}
+
+func (_c *bucketWatchFilteredCall) OnStatusRaw() *bucketStatusCall {
+	return _c.Parent.OnStatusRaw()
+}
+
+func (_c *bucketWatchFilteredCall) OnUpdateRaw(key interface{}, value interface{}, revision interface{}) *bucketUpdateCall {
+	return _c.Parent.OnUpdateRaw(key, value, revision)
+}
+
+func (_c *bucketWatchFilteredCall) OnWatchRaw(keys interface{}, opts interface{}) *bucketWatchCall {
+	return _c.Parent.OnWatchRaw(keys, opts)
+}
+
+func (_c *bucketWatchFilteredCall) OnWatchAllRaw(opts interface{}) *bucketWatchAllCall {
+	return _c.Parent.OnWatchAllRaw(opts)
+}
+
+func (_c *bucketWatchFilteredCall) OnWatchFilteredRaw(keys interface{}, opts interface{}) *bucketWatchFilteredCall {
+	return _c.Parent.OnWatchFilteredRaw(keys, opts)
 }
 
 // entryMock mock of entry.
@@ -4612,216 +5325,4 @@ func (_c *watcherUpdatesCall) OnStopRaw() *watcherStopCall {
 
 func (_c *watcherUpdatesCall) OnUpdatesRaw() *watcherUpdatesCall {
 	return _c.Parent.OnUpdatesRaw()
-}
-
-// marshalerMock mock of marshaler.
-type marshalerMock struct{ mock.Mock }
-
-// newMarshalerMock creates a new marshalerMock.
-func newMarshalerMock(tb testing.TB) *marshalerMock {
-	tb.Helper()
-
-	m := &marshalerMock{}
-	m.Mock.Test(tb)
-
-	tb.Cleanup(func() { m.AssertExpectations(tb) })
-
-	return m
-}
-
-func (_m *marshalerMock) Marshal() ([]byte, error) {
-	_ret := _m.Called()
-
-	if _rf, ok := _ret.Get(0).(func() ([]byte, error)); ok {
-		return _rf()
-	}
-
-	_ra0, _ := _ret.Get(0).([]byte)
-	_rb1 := _ret.Error(1)
-
-	return _ra0, _rb1
-}
-
-func (_m *marshalerMock) OnMarshal() *marshalerMarshalCall {
-	return &marshalerMarshalCall{Call: _m.Mock.On("Marshal"), Parent: _m}
-}
-
-func (_m *marshalerMock) OnMarshalRaw() *marshalerMarshalCall {
-	return &marshalerMarshalCall{Call: _m.Mock.On("Marshal"), Parent: _m}
-}
-
-type marshalerMarshalCall struct {
-	*mock.Call
-	Parent *marshalerMock
-}
-
-func (_c *marshalerMarshalCall) Panic(msg string) *marshalerMarshalCall {
-	_c.Call = _c.Call.Panic(msg)
-	return _c
-}
-
-func (_c *marshalerMarshalCall) Once() *marshalerMarshalCall {
-	_c.Call = _c.Call.Once()
-	return _c
-}
-
-func (_c *marshalerMarshalCall) Twice() *marshalerMarshalCall {
-	_c.Call = _c.Call.Twice()
-	return _c
-}
-
-func (_c *marshalerMarshalCall) Times(i int) *marshalerMarshalCall {
-	_c.Call = _c.Call.Times(i)
-	return _c
-}
-
-func (_c *marshalerMarshalCall) WaitUntil(w <-chan time.Time) *marshalerMarshalCall {
-	_c.Call = _c.Call.WaitUntil(w)
-	return _c
-}
-
-func (_c *marshalerMarshalCall) After(d time.Duration) *marshalerMarshalCall {
-	_c.Call = _c.Call.After(d)
-	return _c
-}
-
-func (_c *marshalerMarshalCall) Run(fn func(args mock.Arguments)) *marshalerMarshalCall {
-	_c.Call = _c.Call.Run(fn)
-	return _c
-}
-
-func (_c *marshalerMarshalCall) Maybe() *marshalerMarshalCall {
-	_c.Call = _c.Call.Maybe()
-	return _c
-}
-
-func (_c *marshalerMarshalCall) TypedReturns(a []byte, b error) *marshalerMarshalCall {
-	_c.Call = _c.Return(a, b)
-	return _c
-}
-
-func (_c *marshalerMarshalCall) ReturnsFn(fn func() ([]byte, error)) *marshalerMarshalCall {
-	_c.Call = _c.Return(fn)
-	return _c
-}
-
-func (_c *marshalerMarshalCall) TypedRun(fn func()) *marshalerMarshalCall {
-	_c.Call = _c.Call.Run(func(args mock.Arguments) {
-		fn()
-	})
-	return _c
-}
-
-func (_c *marshalerMarshalCall) OnMarshal() *marshalerMarshalCall {
-	return _c.Parent.OnMarshal()
-}
-
-func (_c *marshalerMarshalCall) OnMarshalRaw() *marshalerMarshalCall {
-	return _c.Parent.OnMarshalRaw()
-}
-
-// unmarshalerMock mock of unmarshaler.
-type unmarshalerMock struct{ mock.Mock }
-
-// newUnmarshalerMock creates a new unmarshalerMock.
-func newUnmarshalerMock(tb testing.TB) *unmarshalerMock {
-	tb.Helper()
-
-	m := &unmarshalerMock{}
-	m.Mock.Test(tb)
-
-	tb.Cleanup(func() { m.AssertExpectations(tb) })
-
-	return m
-}
-
-func (_m *unmarshalerMock) Unmarshal(aParam []byte) error {
-	_ret := _m.Called(aParam)
-
-	if _rf, ok := _ret.Get(0).(func([]byte) error); ok {
-		return _rf(aParam)
-	}
-
-	_ra0 := _ret.Error(0)
-
-	return _ra0
-}
-
-func (_m *unmarshalerMock) OnUnmarshal(aParam []byte) *unmarshalerUnmarshalCall {
-	return &unmarshalerUnmarshalCall{Call: _m.Mock.On("Unmarshal", aParam), Parent: _m}
-}
-
-func (_m *unmarshalerMock) OnUnmarshalRaw(aParam interface{}) *unmarshalerUnmarshalCall {
-	return &unmarshalerUnmarshalCall{Call: _m.Mock.On("Unmarshal", aParam), Parent: _m}
-}
-
-type unmarshalerUnmarshalCall struct {
-	*mock.Call
-	Parent *unmarshalerMock
-}
-
-func (_c *unmarshalerUnmarshalCall) Panic(msg string) *unmarshalerUnmarshalCall {
-	_c.Call = _c.Call.Panic(msg)
-	return _c
-}
-
-func (_c *unmarshalerUnmarshalCall) Once() *unmarshalerUnmarshalCall {
-	_c.Call = _c.Call.Once()
-	return _c
-}
-
-func (_c *unmarshalerUnmarshalCall) Twice() *unmarshalerUnmarshalCall {
-	_c.Call = _c.Call.Twice()
-	return _c
-}
-
-func (_c *unmarshalerUnmarshalCall) Times(i int) *unmarshalerUnmarshalCall {
-	_c.Call = _c.Call.Times(i)
-	return _c
-}
-
-func (_c *unmarshalerUnmarshalCall) WaitUntil(w <-chan time.Time) *unmarshalerUnmarshalCall {
-	_c.Call = _c.Call.WaitUntil(w)
-	return _c
-}
-
-func (_c *unmarshalerUnmarshalCall) After(d time.Duration) *unmarshalerUnmarshalCall {
-	_c.Call = _c.Call.After(d)
-	return _c
-}
-
-func (_c *unmarshalerUnmarshalCall) Run(fn func(args mock.Arguments)) *unmarshalerUnmarshalCall {
-	_c.Call = _c.Call.Run(fn)
-	return _c
-}
-
-func (_c *unmarshalerUnmarshalCall) Maybe() *unmarshalerUnmarshalCall {
-	_c.Call = _c.Call.Maybe()
-	return _c
-}
-
-func (_c *unmarshalerUnmarshalCall) TypedReturns(a error) *unmarshalerUnmarshalCall {
-	_c.Call = _c.Return(a)
-	return _c
-}
-
-func (_c *unmarshalerUnmarshalCall) ReturnsFn(fn func([]byte) error) *unmarshalerUnmarshalCall {
-	_c.Call = _c.Return(fn)
-	return _c
-}
-
-func (_c *unmarshalerUnmarshalCall) TypedRun(fn func([]byte)) *unmarshalerUnmarshalCall {
-	_c.Call = _c.Call.Run(func(args mock.Arguments) {
-		_aParam, _ := args.Get(0).([]byte)
-		fn(_aParam)
-	})
-	return _c
-}
-
-func (_c *unmarshalerUnmarshalCall) OnUnmarshal(aParam []byte) *unmarshalerUnmarshalCall {
-	return _c.Parent.OnUnmarshal(aParam)
-}
-
-func (_c *unmarshalerUnmarshalCall) OnUnmarshalRaw(aParam interface{}) *unmarshalerUnmarshalCall {
-	return _c.Parent.OnUnmarshalRaw(aParam)
 }
