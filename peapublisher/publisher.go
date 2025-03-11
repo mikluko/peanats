@@ -12,6 +12,7 @@ type Option func(*params)
 
 type params struct {
 	header peanats.Header
+	ctype  peanats.ContentType
 }
 
 // WithHeader sets the header for the message. It can be used multiple times, but each time it will
@@ -22,12 +23,9 @@ func WithHeader(header peanats.Header) Option {
 	}
 }
 
-func WithContentType(v string) Option {
+func WithContentType(c peanats.ContentType) Option {
 	return func(p *params) {
-		if p.header == nil {
-			p.header = peanats.Header{}
-		}
-		p.header.Set(peanats.HeaderContentType, v)
+		p.ctype = c
 	}
 }
 
@@ -50,11 +48,12 @@ type publisherImpl struct {
 func (i *publisherImpl) Publish(_ context.Context, subj string, v any, opts ...Option) error {
 	p := params{
 		header: peanats.Header{},
+		ctype:  peanats.ContentTypeJson,
 	}
 	for _, o := range opts {
 		o(&p)
 	}
-	codec, err := peanats.CodecHeader(p.header)
+	codec, err := peanats.CodecContentType(p.ctype)
 	if err != nil {
 		return err
 	}
@@ -62,6 +61,7 @@ func (i *publisherImpl) Publish(_ context.Context, subj string, v any, opts ...O
 	if err != nil {
 		return err
 	}
+	codec.SetHeader(p.header)
 	msg := &natslib.Msg{
 		Subject: subj,
 		Header:  natslib.Header(p.header),
