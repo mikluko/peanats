@@ -77,7 +77,7 @@ func Handler[RQ any, RS any](h peanats.ArgumentHandler[RQ]) peanats.Handler {
 		v := x.Value()
 		defer x.Release()
 
-		err := peanats.Unmarshal(rq.Header(), rq.Data(), v)
+		err := peanats.Unmarshal(peanats.ContentTypeHeader(rq.Header()), rq.Data(), v)
 		if err != nil {
 			md.Error(ctx, err)
 			return
@@ -112,7 +112,7 @@ type argumentDispatcher[T any] struct {
 }
 
 func (d *argumentDispatcher[T]) Respond(ctx context.Context, res *T) error {
-	p, err := peanats.Marshal(d.Header(), res)
+	p, err := peanats.Marshal(peanats.ContentTypeHeader(d.Header()), res)
 	if err != nil {
 		return err
 	}

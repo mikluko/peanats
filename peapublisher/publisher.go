@@ -54,7 +54,10 @@ func (i *publisherImpl) Publish(_ context.Context, subj string, v any, opts ...O
 	for _, o := range opts {
 		o(&p)
 	}
-	codec := peanats.ChooseCodec(p.header)
+	codec, err := peanats.CodecHeader(p.header)
+	if err != nil {
+		return err
+	}
 	data, err := codec.Encode(v)
 	if err != nil {
 		return err

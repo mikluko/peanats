@@ -45,7 +45,10 @@ func (c *clientImpl[RQ, RS]) Request(ctx context.Context, subj string, rq *RQ, o
 	for _, opt := range opts {
 		opt(&p)
 	}
-	codec := peanats.ChooseCodec(p.header)
+	codec, err := peanats.CodecHeader(p.header)
+	if err != nil {
+		return nil, err
+	}
 	data, err := codec.Encode(rq)
 	if err != nil {
 		return nil, err
@@ -60,7 +63,10 @@ func (c *clientImpl[RQ, RS]) Request(ctx context.Context, subj string, rq *RQ, o
 		return nil, err
 	}
 	rs := new(RS)
-	codec = peanats.ChooseCodec(peanats.Header(msg.Header))
+	codec, err = peanats.CodecHeader(peanats.Header(msg.Header))
+	if err != nil {
+		return nil, err
+	}
 	err = codec.Decode(msg.Data, rs)
 	if err != nil {
 		return nil, err

@@ -16,7 +16,10 @@ func encode[T any](h textproto.MIMEHeader, v *T) ([]byte, error) {
 	if err := w.SetBoundary(boundary); err != nil {
 		panic(err)
 	}
-	c := peanats.ChooseCodec(h)
+	c, err := peanats.CodecHeader(h)
+	if err != nil {
+		return nil, err
+	}
 	c.SetHeader(h)
 	p, err := c.Encode(v)
 	if err != nil {
@@ -27,17 +30,20 @@ func encode[T any](h textproto.MIMEHeader, v *T) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func decode[T any](b []byte) (_ textproto.MIMEHeader, _ *T, err error) {
+func decode[T any](b []byte) (h textproto.MIMEHeader, v *T, err error) {
 	r := multipart.NewReader(bytes.NewReader(b), boundary)
 	p, err := r.NextPart()
 	if err != nil {
 		return nil, nil, err
 	}
-	h := p.Header
-	c := peanats.ChooseCodec(h)
+	h = p.Header
+	c, err := peanats.CodecHeader(h)
+	if err != nil {
+		return nil, nil, err
+	}
 	buf := new(bytes.Buffer)
 	_, _ = buf.ReadFrom(p)
-	v := new(T)
+	v = new(T)
 	err = c.Decode(buf.Bytes(), v)
 	if err != nil {
 		return nil, nil, err

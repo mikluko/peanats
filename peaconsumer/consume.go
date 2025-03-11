@@ -73,7 +73,7 @@ func Handler[T any](h peanats.ArgumentHandler[T]) peanats.Handler {
 		v := x.Value()
 		defer x.Release()
 
-		err := peanats.Unmarshal(m.Header(), m.Data(), v)
+		err := peanats.Unmarshal(peanats.ContentTypeHeader(m.Header()), m.Data(), v)
 		if err != nil {
 			d.Error(ctx, err)
 			return
