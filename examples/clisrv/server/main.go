@@ -9,7 +9,7 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"github.com/mikluko/peanats"
-	"github.com/mikluko/peanats/peaserver"
+	slogcontrib "github.com/mikluko/peanats/contrib/slog"
 )
 
 type request struct {
@@ -32,11 +32,11 @@ func main() {
 	}
 	defer nc.Close()
 
-	h := peanats.ChainMiddleware(
-		peaserver.Handler[request, response](&handler{}),
-		peanats.AccessLogMiddleware(peanats.WithAccessLogMiddlewareLogger(peanats.NewSlogLogger(slog.Default(), slog.LevelInfo))),
+	h := peanats.ChainMessageMiddleware(
+		peanats.ArgumentMessageHandler[request](&handler{}),
+		peanats.AccessLogMiddleware(peanats.WithAccessLogMiddlewareLogger(slogcontrib.Logger(slog.Default(), slog.LevelInfo))),
 	)
-	ch, err := peaserver.ServeChan(ctx, h)
+	ch, err := peanats.SubscribeChan(ctx, h)
 	if err != nil {
 		panic(err)
 	}
@@ -48,15 +48,11 @@ func main() {
 
 type handler struct{}
 
-func (handler) Handle(ctx context.Context, d peanats.Dispatcher, a peanats.Argument[request]) {
-	rq := a.Payload()
-	dd := d.(peaserver.Dispatcher[response])
-	err := dd.Respond(ctx, &response{
+func (handler) HandleArgument(ctx context.Context, a peanats.Argument[request]) error {
+	rq := a.Value()
+	slog.InfoContext(ctx, "received", "seq", rq.Seq, "request", rq.Request)
+	return a.Respond(ctx, &response{
 		Seq:      rq.Seq,
 		Response: "response to " + rq.Request,
 	})
-	if err != nil {
-		d.Error(ctx, err)
-	}
-	slog.InfoContext(ctx, "received", "seq", rq.Seq, "request", rq.Request)
 }

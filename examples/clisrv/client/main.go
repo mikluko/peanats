@@ -9,7 +9,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"github.com/mikluko/peanats/peaclient"
+	"github.com/mikluko/peanats"
 )
 
 type request struct {
@@ -32,7 +32,7 @@ func main() {
 	}
 	defer nc.Close()
 
-	client := peaclient.New[request, response](nc)
+	client := peanats.NewClient[request, response](nc)
 	for t := range time.Tick(1 * time.Second) {
 		rqCtx, rqCancel := context.WithTimeout(ctx, 100*time.Millisecond)
 		req := request{Seq: 1, Request: t.Format(time.RFC3339)}

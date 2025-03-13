@@ -8,7 +8,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"github.com/mikluko/peanats/peapublisher"
+	"github.com/mikluko/peanats"
 )
 
 type model struct {
@@ -25,7 +25,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	pub := peapublisher.New(nc)
+	pub := peanats.NewPublisher(nc)
 	seq := uint(0)
 
 	for _ = range time.Tick(1 * time.Second) {

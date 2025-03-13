@@ -4,30 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/textproto"
 
+	"github.com/vmihailenco/msgpack/v5"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )
 
-func Unmarshal[T any](c ContentType, p []byte, arg *T) error {
-	codec, err := CodecContentType(c)
-	if err != nil {
-		return err
-	}
-	return codec.Decode(p, arg)
-}
-
-func Marshal[T any](c ContentType, arg T) ([]byte, error) {
-	codec, err := CodecContentType(c)
-	if err != nil {
-		return nil, err
-	}
-	return codec.Encode(arg)
-}
-
 var codecs = []Codec{
 	JsonCodec{},
+	MsgpackCodec{},
 	ProtojsonCodec{},
 	PrototextCodec{},
 	ProtobinCodec{},
@@ -37,8 +24,8 @@ type Codec interface {
 	Encode(v any) ([]byte, error)
 	Decode(data []byte, vPtr any) error
 	ContentType() ContentType
-	SetHeader(header Header)
-	MatchHeader(header Header) bool
+	SetHeader(header textproto.MIMEHeader)
+	MatchHeader(header textproto.MIMEHeader) bool
 }
 
 func CodecContentType(c ContentType) (Codec, error) {
@@ -50,11 +37,11 @@ func CodecContentType(c ContentType) (Codec, error) {
 	return nil, errors.New("no codec found")
 }
 
-func CodecHeader(h Header) (Codec, error) {
+func CodecHeader(h textproto.MIMEHeader) (Codec, error) {
 	return CodecContentType(ContentTypeHeader(h))
 }
 
-func ContentTypeHeader(header Header) ContentType {
+func ContentTypeHeader(header textproto.MIMEHeader) ContentType {
 	if header != nil {
 		if v := header.Get(HeaderContentType); v != "" {
 			for _, codec := range codecs {
@@ -74,6 +61,7 @@ const (
 
 	_ ContentType = iota
 	ContentTypeJson
+	ContentTypeMsgpack
 	ContentTypeProtojson
 	ContentTypePrototext
 	ContentTypeProtobin
@@ -83,6 +71,8 @@ func (c ContentType) String() string {
 	switch c {
 	case ContentTypeJson:
 		return "application/json"
+	case ContentTypeMsgpack:
+		return "application/msgpack"
 	case ContentTypeProtojson:
 		return "application/protojson"
 	case ContentTypePrototext:
@@ -108,12 +98,34 @@ func (JsonCodec) ContentType() ContentType {
 	return ContentTypeJson
 }
 
-func (JsonCodec) SetHeader(header Header) {
+func (JsonCodec) SetHeader(header textproto.MIMEHeader) {
 	header.Set(HeaderContentType, ContentTypeJson.String())
 }
 
-func (JsonCodec) MatchHeader(header Header) bool {
+func (JsonCodec) MatchHeader(header textproto.MIMEHeader) bool {
 	return header.Get(HeaderContentType) == ContentTypeJson.String()
+}
+
+type MsgpackCodec struct{}
+
+func (MsgpackCodec) Encode(v any) ([]byte, error) {
+	return msgpack.Marshal(v)
+}
+
+func (MsgpackCodec) Decode(data []byte, vPtr any) error {
+	return msgpack.Unmarshal(data, vPtr)
+}
+
+func (MsgpackCodec) ContentType() ContentType {
+	return ContentTypeMsgpack
+}
+
+func (MsgpackCodec) SetHeader(header textproto.MIMEHeader) {
+	header.Set(HeaderContentType, ContentTypeMsgpack.String())
+}
+
+func (MsgpackCodec) MatchHeader(header textproto.MIMEHeader) bool {
+	return header.Get(HeaderContentType) == ContentTypeMsgpack.String()
 }
 
 type ProtobinCodec struct{}
@@ -136,11 +148,11 @@ func (ProtobinCodec) ContentType() ContentType {
 	return ContentTypeProtobin
 }
 
-func (ProtobinCodec) SetHeader(header Header) {
+func (ProtobinCodec) SetHeader(header textproto.MIMEHeader) {
 	header.Set(HeaderContentType, ContentTypeProtobin.String())
 }
 
-func (ProtobinCodec) MatchHeader(header Header) bool {
+func (ProtobinCodec) MatchHeader(header textproto.MIMEHeader) bool {
 	return header.Get(HeaderContentType) == ContentTypeProtobin.String()
 }
 
@@ -164,11 +176,11 @@ func (ProtojsonCodec) ContentType() ContentType {
 	return ContentTypeProtojson
 }
 
-func (ProtojsonCodec) SetHeader(header Header) {
+func (ProtojsonCodec) SetHeader(header textproto.MIMEHeader) {
 	header.Set(HeaderContentType, ContentTypeProtojson.String())
 }
 
-func (ProtojsonCodec) MatchHeader(header Header) bool {
+func (ProtojsonCodec) MatchHeader(header textproto.MIMEHeader) bool {
 	return header.Get(HeaderContentType) == ContentTypeProtojson.String()
 }
 
@@ -192,11 +204,11 @@ func (ProtoyamlCodec) ContentType() ContentType {
 	return ContentTypeProtojson
 }
 
-func (ProtoyamlCodec) SetHeader(header Header) {
+func (ProtoyamlCodec) SetHeader(header textproto.MIMEHeader) {
 	header.Set(HeaderContentType, ContentTypeProtojson.String())
 }
 
-func (ProtoyamlCodec) MatchHeader(header Header) bool {
+func (ProtoyamlCodec) MatchHeader(header textproto.MIMEHeader) bool {
 	return header.Get(HeaderContentType) == ContentTypeProtojson.String()
 }
 
@@ -220,10 +232,10 @@ func (PrototextCodec) ContentType() ContentType {
 	return ContentTypePrototext
 }
 
-func (PrototextCodec) SetHeader(header Header) {
+func (PrototextCodec) SetHeader(header textproto.MIMEHeader) {
 	header.Set(HeaderContentType, ContentTypePrototext.String())
 }
 
-func (PrototextCodec) MatchHeader(header Header) bool {
+func (PrototextCodec) MatchHeader(header textproto.MIMEHeader) bool {
 	return header.Get(HeaderContentType) == ContentTypePrototext.String()
 }

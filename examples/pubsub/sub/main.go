@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/mikluko/peanats"
-	"github.com/mikluko/peanats/peasubscriber"
+	slogcontrib "github.com/mikluko/peanats/contrib/slog"
 
 	"os/signal"
 
@@ -23,11 +23,11 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	h := peanats.ChainMiddleware(
-		peasubscriber.Handler(peanats.ArgumentHandlerFunc[model](handleModel)),
-		peanats.AccessLogMiddleware(peanats.WithAccessLogMiddlewareLogger(peanats.NewSlogLogger(slog.Default(), slog.LevelInfo))),
+	h := peanats.ChainMessageMiddleware(
+		peanats.ArgumentMessageHandler(peanats.ArgumentHandlerFunc[model](handleModel)),
+		peanats.AccessLogMiddleware(peanats.WithAccessLogMiddlewareLogger(slogcontrib.Logger(slog.Default(), slog.LevelInfo))),
 	)
-	ch, err := peasubscriber.SubscribeChan(ctx, h)
+	ch, err := peanats.SubscribeChan(ctx, h)
 	if err != nil {
 		panic(err)
 	}
@@ -43,6 +43,8 @@ type model struct {
 	Msg string `json:"msg"`
 }
 
-func handleModel(ctx context.Context, _ peanats.Dispatcher, a peanats.Argument[model]) {
-	_ = a.Payload()
+func handleModel(_ context.Context, arg peanats.Argument[model]) error {
+	x := arg.Value()
+	slog.Info(x.Msg, "seq", x.Seq)
+	return nil
 }
