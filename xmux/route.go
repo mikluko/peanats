@@ -1,18 +1,18 @@
-package peanats
+package xmux
 
 import (
-	"context"
-	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/mikluko/peanats/xmsg"
 )
 
 type Route interface {
 	Match(string) bool
-	Handler
+	xmsg.MsgHandler
 }
 
-func NewRoute(handle Handler, patterns ...string) Route {
+func NewRoute(handle xmsg.MsgHandler, patterns ...string) Route {
 	exps := make([]regexp.Regexp, 0, len(patterns))
 	for _, pat := range patterns {
 		pat = regexp.QuoteMeta(pat)
@@ -28,7 +28,7 @@ func NewRoute(handle Handler, patterns ...string) Route {
 }
 
 type routeImpl struct {
-	Handler
+	xmsg.MsgHandler
 	exps []regexp.Regexp
 }
 
@@ -39,34 +39,4 @@ func (r *routeImpl) Match(subj string) bool {
 		}
 	}
 	return false
-}
-
-// Muxer is a handler multiplexer
-type Muxer interface {
-	Handler
-	Add(Route)
-}
-
-func NewMuxer(routes ...Route) Muxer {
-	return &muxerImpl{
-		routes: routes,
-	}
-}
-
-type muxerImpl struct {
-	routes []Route
-}
-
-func (r *muxerImpl) Handle(ctx context.Context, d Dispatcher, m Message) {
-	for _, route := range r.routes {
-		if route.Match(m.Subject()) {
-			route.Handle(ctx, d, m)
-			return
-		}
-	}
-	d.Error(ctx, fmt.Errorf("no route for: %s", m.Subject()))
-}
-
-func (r *muxerImpl) Add(route Route) {
-	r.routes = append(r.routes, route)
 }

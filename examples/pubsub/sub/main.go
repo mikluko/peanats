@@ -5,8 +5,12 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/mikluko/peanats"
+	slogcontrib "github.com/mikluko/peanats/contrib/slog"
+	"github.com/mikluko/peanats/contrib/xmw"
 	"github.com/mikluko/peanats/peasubscriber"
+	"github.com/mikluko/peanats/xarg"
+	"github.com/mikluko/peanats/xmsg"
+	"github.com/mikluko/peanats/xnats"
 
 	"os/signal"
 
@@ -14,7 +18,7 @@ import (
 )
 
 func main() {
-	nc, err := nats.Connect(nats.DefaultURL)
+	nc, err := xnats.Wrap(nats.Connect(nats.DefaultURL))
 	if err != nil {
 		panic(err)
 	}
@@ -23,9 +27,9 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	h := peanats.ChainMiddleware(
-		peasubscriber.Handler(peanats.ArgumentHandlerFunc[model](handleModel)),
-		peanats.AccessLogMiddleware(peanats.WithAccessLogMiddlewareLogger(peanats.NewSlogLogger(slog.Default(), slog.LevelInfo))),
+	h := xmsg.ChainMsgMiddleware(
+		xarg.ArgMsgHandler(xarg.ArgHandlerFunc[model](handleModel)),
+		xmw.AccessLogMiddleware(xmw.WithAccessLogMiddlewareLogger(slogcontrib.Logger(slog.Default(), slog.LevelInfo))),
 	)
 	ch, err := peasubscriber.SubscribeChan(ctx, h)
 	if err != nil {
@@ -43,6 +47,8 @@ type model struct {
 	Msg string `json:"msg"`
 }
 
-func handleModel(ctx context.Context, _ peanats.Dispatcher, a peanats.Argument[model]) {
-	_ = a.Payload()
+func handleModel(_ context.Context, arg xarg.Arg[model]) error {
+	x := arg.Value()
+	slog.Info(x.Msg, "seq", x.Seq)
+	return nil
 }

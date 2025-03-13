@@ -1,9 +1,11 @@
-package peanats
+package xmux_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/mikluko/peanats/xmux"
 )
 
 func TestRouteImpl_Match(t *testing.T) {
@@ -21,7 +23,7 @@ func TestRouteImpl_Match(t *testing.T) {
 	}
 	for _, tc := range tt {
 		t.Run(tc.pattern, func(t *testing.T) {
-			r := NewRoute(nil, tc.pattern)
+			r := xmux.NewRoute(nil, tc.pattern)
 			if tc.expected {
 				assert.True(t, r.Match(tc.subject), "route %q should match subject %q", tc.pattern, tc.subject)
 			} else {

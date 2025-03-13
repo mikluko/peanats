@@ -2,92 +2,131 @@ package peaclient
 
 import (
 	"context"
+	"errors"
 
-	natslib "github.com/nats-io/nats.go"
-
-	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/xarg"
+	"github.com/mikluko/peanats/xenc"
+	"github.com/mikluko/peanats/xmsg"
+	"github.com/mikluko/peanats/xnats"
 )
 
-type Option func(*params)
+type RequestOption func(*requestParams)
 
-type params struct {
-	header peanats.Header
+type requestParams struct {
+	header xmsg.Header
+	ctype  xenc.ContentType
 }
 
-func WithHeader(k, v string) Option {
-	return func(p *params) {
-		p.header.Add(k, v)
+// RequestHeader sets the header for the message. It can be used multiple times, but each time it will
+// overwrite the previous value completely.
+func RequestHeader(header xmsg.Header) RequestOption {
+	return func(p *requestParams) {
+		p.header = header
 	}
 }
 
-func WithContentType(v string) Option {
-	return WithHeader(peanats.HeaderContentType, v)
+func RequestContentType(c xenc.ContentType) RequestOption {
+	return func(p *requestParams) {
+		p.ctype = c
+	}
 }
 
 type Client[RQ, RS any] interface {
-	Request(context.Context, string, *RQ, ...Option) (Result[RS], error)
+	Request(context.Context, string, *RQ, ...RequestOption) (Response[RS], error)
 }
 
-type nats interface {
-	RequestMsgWithContext(context.Context, *natslib.Msg) (*natslib.Msg, error)
-}
-
-func New[RQ, RS any](nc nats) Client[RQ, RS] {
+func New[RQ, RS any](nc xnats.Connection) Client[RQ, RS] {
 	return &clientImpl[RQ, RS]{nc}
 }
 
 type clientImpl[RQ, RS any] struct {
-	nc nats
+	nc xnats.Connection
 }
 
-func (c *clientImpl[RQ, RS]) Request(ctx context.Context, subj string, rq *RQ, opts ...Option) (Result[RS], error) {
-	p := params{header: make(peanats.Header)}
+func (c *clientImpl[RQ, RS]) Request(ctx context.Context, subj string, rq *RQ, opts ...RequestOption) (Response[RS], error) {
+	p := requestParams{
+		header: make(xmsg.Header),
+		ctype:  xenc.ContentTypeJson,
+	}
 	for _, opt := range opts {
 		opt(&p)
 	}
-	codec, err := peanats.CodecHeader(p.header)
+	codec, err := xenc.CodecContentType(p.ctype)
 	if err != nil {
 		return nil, err
 	}
+	codec.SetHeader(p.header)
 	data, err := codec.Encode(rq)
 	if err != nil {
 		return nil, err
 	}
-	msg := &natslib.Msg{
-		Subject: subj,
-		Header:  natslib.Header(p.header),
-		Data:    data,
-	}
-	msg, err = c.nc.RequestMsgWithContext(ctx, msg)
+	msg, err := c.nc.Request(ctx, requestMessageImpl{subj: subj, header: p.header, data: data})
 	if err != nil {
 		return nil, err
 	}
 	rs := new(RS)
-	codec, err = peanats.CodecHeader(peanats.Header(msg.Header))
+	codec, err = xenc.CodecHeader(msg.Header())
 	if err != nil {
 		return nil, err
 	}
-	err = codec.Decode(msg.Data, rs)
+	err = codec.Decode(msg.Data(), rs)
 	if err != nil {
 		return nil, err
 	}
-	return &resultImpl[RS]{header: peanats.Header(msg.Header), payload: rs}, nil
+	return &responseImpl[RS]{header: msg.Header(), payload: rs}, nil
 }
 
-type Result[T any] interface {
-	Header() peanats.Header
-	Payload() *T
+func (c *clientImpl[RQ, RS]) Receiver(ctx context.Context, subj string, rq *RQ, opts ...RequestOption) (ResponseReceiver[RS], error) {
+	panic("not implemented")
 }
 
-type resultImpl[T any] struct {
-	header  peanats.Header
-	payload *T
+type requestMessageImpl struct {
+	subj   string
+	header xmsg.Header
+	data   []byte
 }
 
-func (r *resultImpl[T]) Header() peanats.Header {
+func (r requestMessageImpl) Subject() string {
+	return r.subj
+}
+
+func (r requestMessageImpl) Header() xmsg.Header {
 	return r.header
 }
 
-func (r *resultImpl[T]) Payload() *T {
+func (r requestMessageImpl) Data() []byte {
+	return r.data
+}
+
+type Response[T any] interface {
+	Header() xmsg.Header
+	Value() *T
+}
+
+type responseImpl[T any] struct {
+	header  xmsg.Header
+	payload *T
+}
+
+func (r *responseImpl[T]) Header() xmsg.Header {
+	return r.header
+}
+
+func (r *responseImpl[T]) Value() *T {
 	return r.payload
+}
+
+type ResponseReceiver[T any] interface {
+	Next(context.Context) (Response[T], error)
+	Handle(context.Context, xarg.ArgHandler[T]) error
+}
+
+type responseReceiverImpl[T any] struct{}
+
+func (r responseReceiverImpl[T]) Next(ctx context.Context) (Response[T], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (r responseReceiverImpl[T]) Handle(ctx context.Context, h xarg.ArgHandler[T]) error {
+	return errors.New("not implemented")
 }

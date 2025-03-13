@@ -2,20 +2,21 @@ package pearaft
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/nats-io/graft"
 	"github.com/nats-io/nats.go"
+
+	"github.com/mikluko/peanats/xerr"
 )
 
 type State = graft.State
 
 const (
-	Follower  = graft.FOLLOWER
-	Candidate = graft.CANDIDATE
-	Leader    = graft.LEADER
-	Closed    = graft.CLOSED
+	RaftStateFollower  = graft.FOLLOWER
+	RaftStateCandidate = graft.CANDIDATE
+	RaftStateLeader    = graft.LEADER
+	RaftStateClosed    = graft.CLOSED
 )
 
 type Raft interface {
@@ -24,13 +25,13 @@ type Raft interface {
 	Wait(context.Context, State) error
 }
 
-func NewRaft(nc *nats.Conn, opts ...Option) (Raft, error) {
-	p := params{
+func New(nc *nats.Conn, opts ...Option) (Raft, error) {
+	p := RaftParams{
 		name: "default",
 		size: 3,
 		ctx:  context.Background(),
-		schh: func(from State, to State) error { return nil },
-		errh: func(err error) { panic(err) },
+		schh: nullStateChangeHandlerImpl{},
+		errh: xerr.PanicErrorHandler{},
 		log:  "/dev/null",
 	}
 	for _, o := range opts {
@@ -60,49 +61,59 @@ func NewRaft(nc *nats.Conn, opts ...Option) (Raft, error) {
 	return &r, nil
 }
 
-type params struct {
+type StateChangeHandler interface {
+	HandleStateChange(ctx context.Context, from State, to State) error
+}
+
+type nullStateChangeHandlerImpl struct{}
+
+func (n nullStateChangeHandlerImpl) HandleStateChange(_ context.Context, _ State, _ State) error {
+	return nil
+}
+
+type RaftParams struct {
 	size int
 	name string
 	ctx  context.Context
-	schh func(from State, to State) error
-	errh func(error)
+	schh StateChangeHandler
+	errh xerr.ErrorHandler
 	log  string
 }
 
-type Option func(*params)
+type Option func(*RaftParams)
 
 func WithSize(size int) Option {
-	return func(o *params) {
+	return func(o *RaftParams) {
 		o.size = size
 	}
 }
 
 func WithName(name string) Option {
-	return func(o *params) {
+	return func(o *RaftParams) {
 		o.name = name
 	}
 }
 
 func WithContext(ctx context.Context) Option {
-	return func(o *params) {
+	return func(o *RaftParams) {
 		o.ctx = ctx
 	}
 }
 
-func WithErrorHandler(f func(error)) Option {
-	return func(o *params) {
-		o.errh = f
+func WithErrorHandler(errh xerr.ErrorHandler) Option {
+	return func(o *RaftParams) {
+		o.errh = errh
 	}
 }
 
-func WithStateChangeHandler(f func(from State, to State) error) Option {
-	return func(o *params) {
-		o.schh = f
+func WithStateChangeHandler(schh StateChangeHandler) Option {
+	return func(o *RaftParams) {
+		o.schh = schh
 	}
 }
 
 func WithLog(log string) Option {
-	return func(o *params) {
+	return func(o *RaftParams) {
 		o.log = log
 	}
 }
@@ -110,8 +121,8 @@ func WithLog(log string) Option {
 type raftImpl struct {
 	node *graft.Node
 
-	errh func(error)
-	schh func(from State, to State) error
+	errh xerr.ErrorHandler
+	schh StateChangeHandler
 
 	chc  chan graft.StateChange
 	che  chan error
@@ -120,13 +131,13 @@ type raftImpl struct {
 
 func (r *raftImpl) State() State {
 	if r.node == nil {
-		return Closed
+		return RaftStateClosed
 	}
 	return r.node.State()
 }
 
 func (r *raftImpl) IsLeader() bool {
-	return r.State() == Leader
+	return r.State() == RaftStateLeader
 }
 
 func (r *raftImpl) Wait(ctx context.Context, state State) error {
@@ -147,15 +158,15 @@ func (r *raftImpl) loop(ctx context.Context) {
 	for {
 		select {
 		case c := <-r.chc:
-			err := r.schh(c.From, c.To)
+			err := r.schh.HandleStateChange(ctx, c.From, c.To)
 			if err != nil {
-				r.errh(fmt.Errorf("state change handler errored: %w", err))
+				r.errh.HandleError(ctx, err)
 			}
 			r.cond.L.Lock()
 			r.cond.Broadcast()
 			r.cond.L.Unlock()
 		case err := <-r.che:
-			r.errh(err)
+			r.errh.HandleError(ctx, err)
 		case <-ctx.Done():
 			r.node.Close()
 			close(r.che)

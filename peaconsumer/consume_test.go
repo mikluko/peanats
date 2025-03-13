@@ -1,41 +1,46 @@
-package peaconsumer
+package peaconsumer_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"testing"
 
-	"github.com/alitto/pond/v2"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 
-	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/contrib/pond"
 	"github.com/mikluko/peanats/internal/xtestutil"
+	"github.com/mikluko/peanats/peaconsumer"
+	"github.com/mikluko/peanats/xarg"
+	"github.com/mikluko/peanats/xenc"
+	"github.com/mikluko/peanats/xmsg"
 )
 
 func BenchmarkConsume(b *testing.B) {
-	b.Run("single", func(b *testing.B) {
-		benchmarkConsume(b)
+	b.Run("single/json", func(b *testing.B) {
+		benchmarkConsume(b, xenc.JsonCodec{})
+	})
+	b.Run("single/msgpack", func(b *testing.B) {
+		benchmarkConsume(b, xenc.MsgpackCodec{})
 	})
 	// worker pool is expected to be slower vs single-threaded on no-op benchmark handler
-	b.Run("worker pool", func(b *testing.B) {
-		pool := pond.NewPool(250)
-		benchmarkConsume(b, WithExecutor(func(f func()) {
-			pool.Submit(f)
-		}))
+	b.Run("pool/json", func(b *testing.B) {
+		benchmarkConsume(b, xenc.JsonCodec{}, peaconsumer.ConsumeSubmitter(pond.Submitter(250)))
+	})
+	b.Run("pool/msgpack", func(b *testing.B) {
+		benchmarkConsume(b, xenc.MsgpackCodec{}, peaconsumer.ConsumeSubmitter(pond.Submitter(250)))
 	})
 }
 
-type benchmarkArgument struct {
+type benchmarkConsumeArgument struct {
 	Seq       int    `json:"seq"`
 	Subject   string `json:"subject"`
 	Predicate string `json:"predicate"`
 	Object    string `json:"object"`
 }
 
-func benchmarkConsume(b *testing.B, opts ...Option) {
+func benchmarkConsume(b *testing.B, codec xenc.Codec, opts ...peaconsumer.ConsumeOption) {
 	ns := xtestutil.Server(b)
 
 	nc, err := nats.Connect(ns.ClientURL())
@@ -71,34 +76,38 @@ func benchmarkConsume(b *testing.B, opts ...Option) {
 	wg := sync.WaitGroup{}
 	wg.Add(b.N)
 	for i := 0; i < b.N; i++ {
-		x := benchmarkArgument{
+		x := benchmarkConsumeArgument{
 			Seq:       i,
 			Subject:   "parson",
 			Predicate: "had",
 			Object:    "a dog",
 		}
-		p, err := json.Marshal(x)
+		p, err := codec.Encode(x)
 		if err != nil {
 			b.Fatal(err)
 		}
-		err = nc.Publish(subj, p)
+		h := make(xmsg.Header)
+		codec.SetHeader(h)
+		err = nc.PublishMsg(&nats.Msg{
+			Subject: subj,
+			Header:  nats.Header(h),
+			Data:    p,
+		})
 		if err != nil {
 			b.Fatal(err)
 		}
 	}
 
-	h := peanats.ArgumentHandlerFunc[benchmarkArgument](
-		func(ctx context.Context, d peanats.Dispatcher, a peanats.Argument[benchmarkArgument]) {
-			if err := d.(Dispatcher).Ack(ctx); err != nil {
-				b.Error(err)
-			}
-			wg.Done()
+	h := xarg.ArgHandlerFunc[benchmarkConsumeArgument](
+		func(ctx context.Context, a xarg.Arg[benchmarkConsumeArgument]) error {
+			defer wg.Done()
+			return a.(xmsg.Ackable).Ack(ctx)
 		},
 	)
 
 	b.ResetTimer()
 
-	err = Consume(b.Context(), c, Handler(h), opts...)
+	err = peaconsumer.Consume(b.Context(), c, xarg.ArgMsgHandler(h), opts...)
 	if err != nil {
 		b.Fatal(err)
 	}

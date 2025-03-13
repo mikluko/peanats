@@ -8,8 +8,12 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"github.com/mikluko/peanats"
-	"github.com/mikluko/peanats/peaserver"
+	slogcontrib "github.com/mikluko/peanats/contrib/slog"
+	"github.com/mikluko/peanats/contrib/xmw"
+	"github.com/mikluko/peanats/peasubscriber"
+	"github.com/mikluko/peanats/xarg"
+	"github.com/mikluko/peanats/xmsg"
+	"github.com/mikluko/peanats/xnats"
 )
 
 type request struct {
@@ -26,21 +30,20 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	nc, err := nats.Connect(nats.DefaultURL)
+	conn, err := xnats.Wrap(nats.Connect(nats.DefaultURL))
 	if err != nil {
 		panic(err)
 	}
-	defer nc.Close()
 
-	h := peanats.ChainMiddleware(
-		peaserver.Handler[request, response](&handler{}),
-		peanats.AccessLogMiddleware(peanats.WithAccessLogMiddlewareLogger(peanats.NewSlogLogger(slog.Default(), slog.LevelInfo))),
+	h := xmsg.ChainMsgMiddleware(
+		xarg.ArgMsgHandler[request](&handler{}),
+		xmw.AccessLogMiddleware(xmw.WithAccessLogMiddlewareLogger(slogcontrib.Logger(slog.Default(), slog.LevelInfo))),
 	)
-	ch, err := peaserver.ServeChan(ctx, h)
+	ch, err := peasubscriber.SubscribeChan(ctx, h)
 	if err != nil {
 		panic(err)
 	}
-	sub, err := nc.ChanSubscribe("peanuts.examples.clisrv", ch)
+	sub, err := conn.ChanSubscribe("peanuts.examples.clisrv", ch)
 	defer sub.Unsubscribe()
 
 	<-ctx.Done()
@@ -48,15 +51,11 @@ func main() {
 
 type handler struct{}
 
-func (handler) Handle(ctx context.Context, d peanats.Dispatcher, a peanats.Argument[request]) {
-	rq := a.Payload()
-	dd := d.(peaserver.Dispatcher[response])
-	err := dd.Respond(ctx, &response{
-		Seq:      rq.Seq,
-		Response: "response to " + rq.Request,
+func (handler) HandleArg(ctx context.Context, arg xarg.Arg[request]) error {
+	x := arg.Value()
+	slog.InfoContext(ctx, "received", "seq", x.Seq, "request", x.Request)
+	return arg.(xmsg.Respondable).Respond(ctx, &response{
+		Seq:      x.Seq,
+		Response: "response to " + x.Request,
 	})
-	if err != nil {
-		d.Error(ctx, err)
-	}
-	slog.InfoContext(ctx, "received", "seq", rq.Seq, "request", rq.Request)
 }

@@ -1,37 +1,70 @@
-package peasubscriber
+package peasubscriber_test
 
 import (
 	"context"
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
-	"github.com/alitto/pond/v2"
+	"github.com/stretchr/testify/require"
 
-	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/contrib/pond"
 	"github.com/mikluko/peanats/internal/xtestutil"
+	"github.com/mikluko/peanats/peasubscriber"
+	"github.com/mikluko/peanats/xarg"
+	"github.com/mikluko/peanats/xmsg"
 )
 
-func BenchmarkSubscribe(b *testing.B) {
-	b.Run("single", func(b *testing.B) {
-		benchmarkSubscribeChan(b, WithBuffer(uint(b.N)))
-	})
-	b.Run("worker pool", func(b *testing.B) {
-		pool := pond.NewPool(250)
-		benchmarkSubscribeChan(b, WithBuffer(uint(b.N)), WithExecutor(func(f func()) {
-			pool.Submit(f)
-		}))
+func TestSubscribeChan(t *testing.T) {
+	type Model struct{}
+	t.Run("happy path", func(t *testing.T) {
+		h := xarg.ArgMsgHandler(xarg.ArgHandlerFunc[Model](
+			func(ctx context.Context, a xarg.Arg[Model]) error {
+				return nil
+			},
+		))
+		ch, err := peasubscriber.SubscribeChan(t.Context(), h)
+		require.NoError(t, err)
+		close(ch)
+		time.Sleep(time.Millisecond * 10)
 	})
 }
 
-type benchmarkArgument struct {
+func BenchmarkSubscribeChan(b *testing.B) {
+	b.Run("single", func(b *testing.B) {
+		benchmarkSubscribeChan(b, peasubscriber.SubscribeBuffer(uint(b.N)))
+	})
+	b.Run("worker pool", func(b *testing.B) {
+		benchmarkSubscribeChan(b, peasubscriber.SubscribeBuffer(uint(b.N)), peasubscriber.SubscribeSubmitter(pond.Submitter(250)))
+	})
+}
+
+type benchmarkSubscribeArgument struct {
 	Seq       int    `json:"seq"`
 	Subject   string `json:"subject"`
 	Predicate string `json:"predicate"`
 	Object    string `json:"object"`
 }
 
-func benchmarkSubscribeChan(b *testing.B, opts ...Option) {
+type benchmarkSubscribeMsgImp struct {
+	subject string
+	data    []byte
+}
+
+func (m benchmarkSubscribeMsgImp) Subject() string {
+	return m.subject
+}
+
+func (m benchmarkSubscribeMsgImp) Header() xmsg.Header {
+	return make(xmsg.Header)
+}
+
+func (m benchmarkSubscribeMsgImp) Data() []byte {
+	return m.data
+}
+
+func benchmarkSubscribeChan(b *testing.B, opts ...peasubscriber.SubscribeOption) {
 	ns := xtestutil.Server(b)
 	nc := xtestutil.Conn(b, ns)
 
@@ -40,13 +73,14 @@ func benchmarkSubscribeChan(b *testing.B, opts ...Option) {
 	wg := sync.WaitGroup{}
 	wg.Add(b.N)
 
-	h := peanats.ArgumentHandlerFunc[benchmarkArgument](
-		func(ctx context.Context, d peanats.Dispatcher, m peanats.Argument[benchmarkArgument]) {
+	h := xarg.ArgHandlerFunc[benchmarkSubscribeArgument](
+		func(ctx context.Context, m xarg.Arg[benchmarkSubscribeArgument]) error {
 			wg.Done()
+			return nil
 		},
 	)
 
-	ch, err := SubscribeChan(b.Context(), Handler(h), opts...)
+	ch, err := peasubscriber.SubscribeChan(b.Context(), xarg.ArgMsgHandler(h), opts...)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -61,7 +95,11 @@ func benchmarkSubscribeChan(b *testing.B, opts ...Option) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := nc.Publish(subj, []byte(fmt.Sprintf(`{"seq":%d,"subject":"parson","predicate":"had","object":"a dog"}`, i)))
+		msg := benchmarkSubscribeMsgImp{
+			subject: subj,
+			data:    []byte(fmt.Sprintf(`{"seq":%d,"subject":"parson","predicate":"had","object":"a dog"}`, i)),
+		}
+		err := nc.Publish(b.Context(), msg)
 		if err != nil {
 			b.Fatal(err)
 		}

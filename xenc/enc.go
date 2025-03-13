@@ -1,33 +1,22 @@
-package peanats
+package xenc
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/textproto"
 
+	"github.com/vmihailenco/msgpack/v5"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )
 
-func Unmarshal[T any](c ContentType, p []byte, arg *T) error {
-	codec, err := CodecContentType(c)
-	if err != nil {
-		return err
-	}
-	return codec.Decode(p, arg)
-}
-
-func Marshal[T any](c ContentType, arg T) ([]byte, error) {
-	codec, err := CodecContentType(c)
-	if err != nil {
-		return nil, err
-	}
-	return codec.Encode(arg)
-}
+type Header = textproto.MIMEHeader
 
 var codecs = []Codec{
 	JsonCodec{},
+	MsgpackCodec{},
 	ProtojsonCodec{},
 	PrototextCodec{},
 	ProtobinCodec{},
@@ -74,6 +63,7 @@ const (
 
 	_ ContentType = iota
 	ContentTypeJson
+	ContentTypeMsgpack
 	ContentTypeProtojson
 	ContentTypePrototext
 	ContentTypeProtobin
@@ -83,6 +73,8 @@ func (c ContentType) String() string {
 	switch c {
 	case ContentTypeJson:
 		return "application/json"
+	case ContentTypeMsgpack:
+		return "application/msgpack"
 	case ContentTypeProtojson:
 		return "application/protojson"
 	case ContentTypePrototext:
@@ -114,6 +106,28 @@ func (JsonCodec) SetHeader(header Header) {
 
 func (JsonCodec) MatchHeader(header Header) bool {
 	return header.Get(HeaderContentType) == ContentTypeJson.String()
+}
+
+type MsgpackCodec struct{}
+
+func (MsgpackCodec) Encode(v any) ([]byte, error) {
+	return msgpack.Marshal(v)
+}
+
+func (MsgpackCodec) Decode(data []byte, vPtr any) error {
+	return msgpack.Unmarshal(data, vPtr)
+}
+
+func (MsgpackCodec) ContentType() ContentType {
+	return ContentTypeMsgpack
+}
+
+func (MsgpackCodec) SetHeader(header Header) {
+	header.Set(HeaderContentType, ContentTypeMsgpack.String())
+}
+
+func (MsgpackCodec) MatchHeader(header Header) bool {
+	return header.Get(HeaderContentType) == ContentTypeMsgpack.String()
 }
 
 type ProtobinCodec struct{}

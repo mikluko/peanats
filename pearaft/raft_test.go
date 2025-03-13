@@ -69,6 +69,15 @@ func Example() {
 	// level=INFO msg=completed worker=4 state=Candidate
 }
 
+type stateChangeHandler struct {
+	log *slog.Logger
+}
+
+func (h *stateChangeHandler) HandleStateChange(ctx context.Context, from pearaft.State, to pearaft.State) error {
+	h.log.Log(ctx, slog.LevelDebug-1, "state change", "from", from, "to", to)
+	return nil
+}
+
 func worker(idx int) (pearaft.State, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -83,17 +92,14 @@ func worker(idx int) (pearaft.State, error) {
 	}
 	defer nc.Close()
 
-	r, err := pearaft.NewRaft(nc,
+	r, err := pearaft.New(nc,
 		pearaft.WithSize(3),
 		pearaft.WithContext(ctx),
 		pearaft.WithLog(fmt.Sprintf(path.Join(os.TempDir(), "raft.%d.log"), idx)),
-		pearaft.WithStateChangeHandler(func(from pearaft.State, to pearaft.State) error {
-			log.Log(ctx, slog.LevelDebug-1, "state change", "from", from, "to", to)
-			return nil
-		}),
+		pearaft.WithStateChangeHandler(&stateChangeHandler{log: log}),
 	)
 	if err != nil {
-		return pearaft.Follower, err
+		return pearaft.RaftStateFollower, err
 	}
 
 	var state pearaft.State
@@ -101,7 +107,7 @@ func worker(idx int) (pearaft.State, error) {
 	state = r.State()
 	log.Debug("reached", slog.String("state", state.String()))
 
-	err = r.Wait(ctx, pearaft.Candidate)
+	err = r.Wait(ctx, pearaft.RaftStateCandidate)
 	if err != nil {
 		return state, err
 	}
@@ -109,7 +115,7 @@ func worker(idx int) (pearaft.State, error) {
 	state = r.State()
 	log.Debug("reached", slog.String("state", state.String()))
 
-	err = r.Wait(ctx, pearaft.Leader)
+	err = r.Wait(ctx, pearaft.RaftStateLeader)
 	if err != nil {
 		return state, err
 	}

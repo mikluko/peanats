@@ -5,55 +5,62 @@ import (
 
 	"github.com/nats-io/nats.go/jetstream"
 
-	"github.com/mikluko/peanats"
-	"github.com/mikluko/peanats/internal/xargpool"
+	"github.com/mikluko/peanats/xerr"
+	"github.com/mikluko/peanats/xmsg"
+	"github.com/mikluko/peanats/xsubm"
 )
 
-type Option func(*params)
+type ConsumeOption func(*consumeParams)
 
-type params struct {
-	exec func(func())
+type consumeParams struct {
+	subm xsubm.Submitter
+	errh xerr.ErrorHandler
 	opts []jetstream.PullConsumeOpt
 }
 
-func defaults() params {
-	return params{
-		exec: func(f func()) { f() },
+// ConsumeSubmitter sets the workload submitter.
+func ConsumeSubmitter(subm xsubm.Submitter) ConsumeOption {
+	return func(p *consumeParams) {
+		p.subm = subm
 	}
 }
 
-// WithExecutor sets the executor.
-// If not set, the default executor runs the handler synchronously in the same goroutine.
-func WithExecutor(e func(func())) Option {
-	return func(p *params) {
-		p.exec = e
-	}
-}
-
-// WithJetstreamOption sets the Jetstream pull consumer options.
-func WithJetstreamOption(opt jetstream.PullConsumeOpt) Option {
-	return func(p *params) {
+// ConsumeJetstreamOption sets the Jetstream pull consumer options.
+func ConsumeJetstreamOption(opt jetstream.PullConsumeOpt) ConsumeOption {
+	return func(p *consumeParams) {
 		p.opts = append(p.opts, opt)
 	}
 }
 
-type jetstreamConsumer interface {
+// ConsumeErrorHandler sets the error handler.
+func ConsumeErrorHandler(errh xerr.ErrorHandler) ConsumeOption {
+	return func(p *consumeParams) {
+		p.errh = errh
+	}
+}
+
+type consumer interface {
 	Consume(jetstream.MessageHandler, ...jetstream.PullConsumeOpt) (jetstream.ConsumeContext, error)
 }
 
 // Consume implements consumer side of producer/consumer pattern.
-func Consume(ctx context.Context, c jetstreamConsumer, h peanats.Handler, opts ...Option) error {
-	p := defaults()
+func Consume(ctx context.Context, c consumer, h xmsg.MsgHandler, opts ...ConsumeOption) error {
+	p := consumeParams{
+		subm: xsubm.JustGoSubmitter{},
+		errh: xerr.PanicErrorHandler{},
+		opts: []jetstream.PullConsumeOpt{},
+	}
 	for _, o := range opts {
 		o(&p)
 	}
-	cc, err := c.Consume(func(msg jetstream.Msg) {
-		p.exec(func() {
+	cc, err := c.Consume(func(m jetstream.Msg) {
+		p.subm.Submit(func() {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			m := peanats.NewJetstreamMessage(msg)
-			d := dispatcherImpl{m}
-			h.Handle(ctx, &d, m)
+			err := h.HandleMsg(ctx, xmsg.NewJetstream(m))
+			if err != nil {
+				p.errh.HandleError(ctx, err)
+			}
 		})
 	}, p.opts...)
 	if err != nil {
@@ -64,83 +71,4 @@ func Consume(ctx context.Context, c jetstreamConsumer, h peanats.Handler, opts .
 		cc.Stop()
 	}()
 	return nil
-}
-
-func Handler[T any](h peanats.ArgumentHandler[T]) peanats.Handler {
-	pool := xargpool.New[T]()
-	return peanats.HandlerFunc(func(ctx context.Context, d peanats.Dispatcher, m peanats.Message) {
-		x := pool.Acquire(ctx)
-		v := x.Value()
-		defer x.Release()
-
-		err := peanats.Unmarshal(peanats.ContentTypeHeader(m.Header()), m.Data(), v)
-		if err != nil {
-			d.Error(ctx, err)
-			return
-		}
-
-		msg := m.(peanats.JetstreamMessage) // panic if not JetstreamMessage is intended
-		h.Handle(ctx, dispatcherImpl{msg}, argumentImpl[T]{msg, v})
-	})
-}
-
-// Dispatcher interface defines a dispatcher that can acknowledge the
-// completion of the processing of the message.
-type Dispatcher interface {
-	peanats.Dispatcher
-	Ack(context.Context, ...peanats.AckOption) error
-	Nak(context.Context, ...peanats.NakOption) error
-	Term(context.Context, ...peanats.TermOption) error
-	InProgress(ctx context.Context) error
-}
-
-var _ Dispatcher = (*dispatcherImpl)(nil)
-
-type dispatcherImpl struct {
-	msg peanats.JetstreamMessage
-}
-
-func (d dispatcherImpl) Header() peanats.Header {
-	return d.msg.Header()
-}
-
-func (d dispatcherImpl) Error(_ context.Context, err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (d dispatcherImpl) Ack(ctx context.Context, opts ...peanats.AckOption) error {
-	return d.msg.Ack(ctx, opts...)
-}
-
-func (d dispatcherImpl) Nak(ctx context.Context, opts ...peanats.NakOption) error {
-	return d.msg.Nak(ctx, opts...)
-}
-
-func (d dispatcherImpl) Term(ctx context.Context, opts ...peanats.TermOption) error {
-	return d.msg.Term(ctx, opts...)
-}
-
-func (d dispatcherImpl) InProgress(ctx context.Context) error {
-	return d.msg.InProgress(ctx)
-}
-
-var _ peanats.Argument[any] = (*argumentImpl[any])(nil)
-
-type argumentImpl[T any] struct {
-	m peanats.Message
-	v *T
-}
-
-func (a argumentImpl[T]) Subject() string {
-	return a.m.Subject()
-}
-
-func (a argumentImpl[T]) Header() peanats.Header {
-	return a.m.Header()
-}
-
-func (a argumentImpl[T]) Payload() *T {
-	return a.v
 }
