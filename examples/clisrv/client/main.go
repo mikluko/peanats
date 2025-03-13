@@ -9,7 +9,8 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"github.com/mikluko/peanats/peaclient"
+	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/requester"
 )
 
 type request struct {
@@ -26,13 +27,12 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	nc, err := nats.Connect(nats.DefaultURL)
+	conn, err := peanats.WrapConnection(nats.Connect(nats.DefaultURL))
 	if err != nil {
 		panic(err)
 	}
-	defer nc.Close()
 
-	client := peaclient.New[request, response](nc)
+	client := requester.New[request, response](conn)
 	for t := range time.Tick(1 * time.Second) {
 		rqCtx, rqCancel := context.WithTimeout(ctx, 100*time.Millisecond)
 		req := request{Seq: 1, Request: t.Format(time.RFC3339)}
@@ -40,7 +40,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		slog.Info("response", "seq", res.Payload().Seq, "response", res.Payload().Response)
+		x := res.Value()
+		slog.Info("response", "seq", x.Seq, "response", x.Response)
 		rqCancel()
 	}
 }

@@ -9,7 +9,9 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"github.com/mikluko/peanats"
-	"github.com/mikluko/peanats/peaserver"
+	"github.com/mikluko/peanats/contrib/logging"
+	slogcontrib "github.com/mikluko/peanats/contrib/slog"
+	"github.com/mikluko/peanats/subscriber"
 )
 
 type request struct {
@@ -26,21 +28,20 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	nc, err := nats.Connect(nats.DefaultURL)
+	conn, err := peanats.WrapConnection(nats.Connect(nats.DefaultURL))
 	if err != nil {
 		panic(err)
 	}
-	defer nc.Close()
 
-	h := peanats.ChainMiddleware(
-		peaserver.Handler[request, response](&handler{}),
-		peanats.AccessLogMiddleware(peanats.WithAccessLogMiddlewareLogger(peanats.NewSlogLogger(slog.Default(), slog.LevelInfo))),
+	h := peanats.ChainMsgMiddleware(
+		peanats.MsgHandlerFromArgHandler[request](&handler{}),
+		logging.AccessLogMiddleware(logging.AccessLogMiddlewareLogger(slogcontrib.Logger(slog.Default(), slog.LevelInfo))),
 	)
-	ch, err := peaserver.ServeChan(ctx, h)
+	ch, err := subscriber.SubscribeChan(ctx, h)
 	if err != nil {
 		panic(err)
 	}
-	sub, err := nc.ChanSubscribe("peanuts.examples.clisrv", ch)
+	sub, err := conn.ChanSubscribe("peanuts.examples.clisrv", ch)
 	defer sub.Unsubscribe()
 
 	<-ctx.Done()
@@ -48,15 +49,11 @@ func main() {
 
 type handler struct{}
 
-func (handler) Handle(ctx context.Context, d peanats.Dispatcher, a peanats.Argument[request]) {
-	rq := a.Payload()
-	dd := d.(peaserver.Dispatcher[response])
-	err := dd.Respond(ctx, &response{
-		Seq:      rq.Seq,
-		Response: "response to " + rq.Request,
+func (handler) HandleArg(ctx context.Context, arg peanats.Arg[request]) error {
+	x := arg.Value()
+	slog.InfoContext(ctx, "received", "seq", x.Seq, "request", x.Request)
+	return arg.(peanats.Respondable).Respond(ctx, &response{
+		Seq:      x.Seq,
+		Response: "response to " + x.Request,
 	})
-	if err != nil {
-		d.Error(ctx, err)
-	}
-	slog.InfoContext(ctx, "received", "seq", rq.Seq, "request", rq.Request)
 }

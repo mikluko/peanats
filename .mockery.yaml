@@ -1,11 +1,24 @@
-resolve-type-alias: false
-issue-845-fix:      true
-with-expecter:      true
-dir:                "{{.InterfaceDir}}/mock"
-outpkg:             "{{.PackageName}}mock"
-mockname:           "{{.InterfaceName}}"
-filename:           "{{.InterfaceName|lower}}.go"
-inpackage:          true
+resolve-type-alias:     false
+issue-845-fix:          true
+disable-version-string: true
+with-expecter:          true
+dir:                    "{{.ConfigDir}}/internal/xmock/{{.PackageName}}mock"
+outpkg:                 "{{.PackageName}}mock"
+mockname:               "{{.InterfaceName|camelcase}}"
+filename:               "{{.InterfaceName|lower}}.go"
 packages:
-  github.com/mikluko/peanats/:
+  github.com/nats-io/nats.go/jetstream:
     interfaces:
+      Consumer:
+      KeyValue:
+      KeyValueEntry:
+      KeyWatcher:
+  github.com/mikluko/peanats:
+    interfaces:
+      Connection:
+      Msg:
+      MsgJetstream:
+  github.com/mikluko/peanats/bucket:
+    interfaces:
+      BucketEntry:
+      BucketWatcher:
