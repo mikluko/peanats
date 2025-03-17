@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 
+	"github.com/nats-io/nats.go"
+
 	"github.com/mikluko/peanats"
 )
 
@@ -31,7 +33,7 @@ func RequestContentType(c peanats.ContentType) RequestOption {
 
 type Requester[RQ, RS any] interface {
 	Request(context.Context, string, *RQ, ...RequestOption) (Response[RS], error)
-	ResponseReceiver(context.Context, string, *RQ, ...RequestOption) (ResponseReceiver[RS], error)
+	ResponseReceiver(context.Context, string, *RQ, ...ResponseReceiverOption) (ResponseReceiver[RS], error)
 }
 
 func New[RQ, RS any](nc peanats.Connection) Requester[RQ, RS] {
@@ -45,17 +47,12 @@ type clientImpl[RQ, RS any] struct {
 func (c *clientImpl[RQ, RS]) Request(ctx context.Context, subj string, rq *RQ, opts ...RequestOption) (Response[RS], error) {
 	p := requestParams{
 		header: make(peanats.Header),
-		ctype:  peanats.ContentTypeJson,
+		ctype:  peanats.DefaultContentType,
 	}
 	for _, opt := range opts {
 		opt(&p)
 	}
-	codec, err := peanats.CodecContentType(p.ctype)
-	if err != nil {
-		return nil, err
-	}
-	codec.SetContentType(p.header)
-	data, err := codec.Marshal(rq)
+	data, err := peanats.MarshalHeader(rq, p.header)
 	if err != nil {
 		return nil, err
 	}
@@ -64,29 +61,61 @@ func (c *clientImpl[RQ, RS]) Request(ctx context.Context, subj string, rq *RQ, o
 		return nil, err
 	}
 	rs := new(RS)
-	codec, err = peanats.CodecHeader(msg.Header())
-	if err != nil {
-		return nil, err
-	}
-	err = codec.Unmarshal(msg.Data(), rs)
+	err = peanats.UnmarshalHeader(msg.Data(), rs, msg.Header())
 	if err != nil {
 		return nil, err
 	}
 	return &responseImpl[RS]{header: msg.Header(), payload: rs}, nil
 }
 
-func (c *clientImpl[RQ, RS]) ResponseReceiver(ctx context.Context, subj string, rq *RQ, opts ...RequestOption) (ResponseReceiver[RS], error) {
-	panic("not implemented")
+func (c *clientImpl[RQ, RS]) ResponseReceiver(ctx context.Context, subj string, rq *RQ, opts ...ResponseReceiverOption) (ResponseReceiver[RS], error) {
+	rcvParams := responseReceiverParams{
+		buffer:    DefaultBuffer,
+		skipper:   DefaultSkipper,
+		proceeder: DefaultProceeder,
+	}
+	for _, opt := range opts {
+		opt(&rcvParams)
+	}
+	reqParams := requestParams{
+		header: make(peanats.Header),
+		ctype:  peanats.DefaultContentType,
+	}
+	for _, opt := range rcvParams.rqOpts {
+		opt(&reqParams)
+	}
+	data, err := peanats.MarshalHeader(rq, reqParams.header)
+	if err != nil {
+		return nil, err
+	}
+	msg := requestMessageImpl{subj: subj, repl: nats.NewInbox(), header: reqParams.header, data: data}
+
+	// message is ready, prepare response sequence subscription
+	buf := make(chan peanats.Msg, rcvParams.buffer)
+	sub, err := c.nc.SubscribeChan(ctx, msg.Reply(), buf)
+
+	// send the request
+	err = c.nc.Publish(ctx, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &responseReceiverImpl[RS]{buf: buf, sub: sub, skp: rcvParams.skipper, pdr: rcvParams.proceeder}, nil
 }
 
 type requestMessageImpl struct {
 	subj   string
+	repl   string
 	header peanats.Header
 	data   []byte
 }
 
 func (r requestMessageImpl) Subject() string {
 	return r.subj
+}
+
+func (r requestMessageImpl) Reply() string {
+	return r.repl
 }
 
 func (r requestMessageImpl) Header() peanats.Header {
@@ -120,28 +149,108 @@ type ResponseReceiver[T any] interface {
 	Stop() error
 }
 
-type responseReceiverImpl[T any] struct {
-	buf chan peanats.Msg
+type ResponseReceiverOption func(*responseReceiverParams)
+
+type responseReceiverParams struct {
+	buffer    uint
+	skipper   Skipper
+	proceeder Proceeder
+	rqOpts    []RequestOption
 }
 
-func (r responseReceiverImpl[T]) Next(ctx context.Context) (Response[T], error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case msg := <-r.buf:
-		if msg == nil {
-			return nil, io.EOF
-		}
-		x := new(T)
-		err := peanats.UnmarshalHeader(msg.Data(), x, msg.Header())
-		if err != nil {
-			return nil, err
-		}
-		return &responseImpl[T]{header: msg.Header(), payload: x}, nil
+const DefaultBuffer = 0
+
+// ResponseReceiverBuffer sets the buffer size for the response receiver.
+func ResponseReceiverBuffer(size uint) ResponseReceiverOption {
+	return func(r *responseReceiverParams) {
+		r.buffer = size
 	}
 }
 
-func (r responseReceiverImpl[T]) Stop() error {
+// Skipper makes decision whether or not skip the message handler without
+// interrupting the response sequence.
+type Skipper interface {
+	Skip(context.Context, peanats.Msg) (bool, error)
+}
+
+// DefaultSkipper skips messages without payload.
+var DefaultSkipper Skipper = &skipperImpl{}
+
+type skipperImpl struct{}
+
+func (s *skipperImpl) Skip(_ context.Context, msg peanats.Msg) (bool, error) {
+	return msg.Data() == nil, nil
+}
+
+// Proceeder makes decision whether or not proceed with the response sequence.
+// Decision is made late, after the message handler is invoked or skipped.
+type Proceeder interface {
+	Proceed(context.Context, peanats.Msg) (bool, error)
+}
+
+// DefaultProceeder is the default proceeder implementation.
+// It interrupts the response sequence if the message is empty.
+var DefaultProceeder Proceeder = &proceederImpl{}
+
+type proceederImpl struct{}
+
+func (p *proceederImpl) Proceed(_ context.Context, msg peanats.Msg) (bool, error) {
+	if msg.Data() != nil {
+		return true, nil
+	}
+	return false, nil
+}
+
+// ResponseReceiverProceeder sets the proceeder for the response sequence.
+func ResponseReceiverProceeder(p Proceeder) ResponseReceiverOption {
+	return func(r *responseReceiverParams) {
+		r.proceeder = p
+	}
+}
+
+// ResponseReceiverRequestOptions appends the set of request options for the
+// request produced by the response receiver.
+func ResponseReceiverRequestOptions(opts ...RequestOption) ResponseReceiverOption {
+	return func(r *responseReceiverParams) {
+		r.rqOpts = append(r.rqOpts, opts...)
+	}
+}
+
+type responseReceiverImpl[T any] struct {
+	msg peanats.Msg
+	buf chan peanats.Msg
+	sub peanats.Unsubscriber
+	skp Skipper
+	pdr Proceeder
+}
+
+func (r *responseReceiverImpl[T]) Next(ctx context.Context) (Response[T], error) {
+	if r.msg != nil {
+		if proceed, err := r.pdr.Proceed(ctx, r.msg); err != nil {
+			return nil, err
+		} else if !proceed {
+			return nil, io.EOF
+		}
+	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case r.msg = <-r.buf:
+		if skip, err := r.skp.Skip(ctx, r.msg); err != nil {
+			return nil, err
+		} else if skip {
+			return nil, io.EOF
+		}
+		x := new(T)
+		err := peanats.UnmarshalHeader(r.msg.Data(), x, r.msg.Header())
+		if err != nil {
+			return nil, err
+		}
+		return &responseImpl[T]{header: r.msg.Header(), payload: x}, nil
+	}
+}
+
+func (r *responseReceiverImpl[T]) Stop() error {
 	close(r.buf)
-	return nil
+	return r.sub.Unsubscribe()
 }
