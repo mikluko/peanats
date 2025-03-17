@@ -175,9 +175,6 @@ type Skipper interface {
 	Skip(context.Context, peanats.Msg) (bool, error)
 }
 
-// DefaultSkipper skips messages without payload.
-var DefaultSkipper Skipper = &skipperImpl{}
-
 type skipperImpl struct{}
 
 func (s *skipperImpl) Skip(_ context.Context, msg peanats.Msg) (bool, error) {
@@ -190,15 +187,24 @@ type Proceeder interface {
 	Proceed(context.Context, peanats.Msg) (bool, error)
 }
 
-// DefaultProceeder is the default proceeder implementation.
-// It interrupts the response sequence if the message is empty.
-var DefaultProceeder Proceeder = &proceederImpl{}
-
 type proceederImpl struct{}
 
 func (p *proceederImpl) Proceed(_ context.Context, msg peanats.Msg) (bool, error) {
 	return len(msg.Data()) != 0, nil
 }
+
+var (
+	// DefaultSkipper skips empty messages.
+	DefaultSkipper Skipper = &skipperImpl{}
+
+	// DefaultProceeder proceeds only on non-empty messages.
+	DefaultProceeder Proceeder = &proceederImpl{}
+
+	// The combination of default Skipper and Proceeder effectively create logic
+	// where the first empty message is not processed by the handler and
+	// terminates the response sequence.
+	_ = 0
+)
 
 // ResponseReceiverProceeder sets the proceeder for the response sequence.
 func ResponseReceiverProceeder(p Proceeder) ResponseReceiverOption {
