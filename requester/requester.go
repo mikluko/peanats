@@ -208,6 +208,13 @@ func ResponseReceiverProceeder(p Proceeder) ResponseReceiverOption {
 	}
 }
 
+// ResponseReceiverSkipper sets the skipper for the response sequence.
+func ResponseReceiverSkipper(s Skipper) ResponseReceiverOption {
+	return func(r *responseReceiverParams) {
+		r.skipper = s
+	}
+}
+
 // ResponseReceiverRequestOptions appends the set of request options for the
 // request produced by the response receiver.
 func ResponseReceiverRequestOptions(opts ...RequestOption) ResponseReceiverOption {
