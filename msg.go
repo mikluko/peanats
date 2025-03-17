@@ -87,15 +87,7 @@ func (m *msgImpl) RespondHeader(_ context.Context, x any, header Header) error {
 	if header == nil {
 		header = make(Header)
 	}
-	if header.Get(HeaderContentType) == "" {
-		header.Set(HeaderContentType, ContentTypeHeader(Header(m.Msg.Header)).String())
-	}
-	codec, err := CodecHeader(header)
-	if err != nil {
-		return err
-	}
-	codec.SetContentType(header)
-	data, err := codec.Marshal(x)
+	data, err := MarshalHeader(x, header)
 	if err != nil {
 		return err
 	}
