@@ -179,7 +179,7 @@ var DefaultSkipper Skipper = &skipperImpl{}
 type skipperImpl struct{}
 
 func (s *skipperImpl) Skip(_ context.Context, msg peanats.Msg) (bool, error) {
-	return msg.Data() == nil, nil
+	return len(msg.Data()) == 0, nil
 }
 
 // Proceeder makes decision whether or not proceed with the response sequence.
