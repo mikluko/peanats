@@ -2,6 +2,8 @@ package requester
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 
 	"github.com/nats-io/nats.go"
@@ -195,10 +197,7 @@ var DefaultProceeder Proceeder = &proceederImpl{}
 type proceederImpl struct{}
 
 func (p *proceederImpl) Proceed(_ context.Context, msg peanats.Msg) (bool, error) {
-	if msg.Data() != nil {
-		return true, nil
-	}
-	return false, nil
+	return len(msg.Data()) != 0, nil
 }
 
 // ResponseReceiverProceeder sets the proceeder for the response sequence.
@@ -231,12 +230,24 @@ type responseReceiverImpl[T any] struct {
 	pdr Proceeder
 }
 
+var (
+	ErrSkipped = errors.New("message skipped by the skipper")
+	ErrOver    = fmt.Errorf("%w: sequence is over", io.EOF)
+)
+
+func (r *responseReceiverImpl[T]) proceed(ctx context.Context, msg peanats.Msg) error {
+	if proceed, err := r.pdr.Proceed(ctx, msg); err != nil {
+		return err
+	} else if !proceed {
+		return ErrOver
+	}
+	return nil
+}
+
 func (r *responseReceiverImpl[T]) Next(ctx context.Context) (Response[T], error) {
 	if r.msg != nil {
-		if proceed, err := r.pdr.Proceed(ctx, r.msg); err != nil {
+		if err := r.proceed(ctx, r.msg); err != nil {
 			return nil, err
-		} else if !proceed {
-			return nil, io.EOF
 		}
 	}
 	select {
@@ -246,7 +257,10 @@ func (r *responseReceiverImpl[T]) Next(ctx context.Context) (Response[T], error)
 		if skip, err := r.skp.Skip(ctx, r.msg); err != nil {
 			return nil, err
 		} else if skip {
-			return nil, io.EOF
+			if err := r.proceed(ctx, r.msg); err != nil {
+				return nil, err
+			}
+			return nil, ErrSkipped
 		}
 		x := new(T)
 		err := peanats.UnmarshalHeader(r.msg.Data(), x, r.msg.Header())

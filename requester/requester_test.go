@@ -3,6 +3,7 @@ package requester_test
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -152,5 +153,8 @@ func BenchmarkClientImpl_ResponseReceiver(b *testing.B) {
 			}
 		}
 		_, err = rcv.Next(b.Context())
+		if !errors.Is(err, io.EOF) {
+			b.Fatal(err)
+		}
 	}
 }
