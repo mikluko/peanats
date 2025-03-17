@@ -22,125 +22,6 @@ func (_m *Connection) EXPECT() *Connection_Expecter {
 	return &Connection_Expecter{mock: &_m.Mock}
 }
 
-// ChanQueueSubscribe provides a mock function with given fields: subj, queue, ch
-func (_m *Connection) ChanQueueSubscribe(subj string, queue string, ch chan peanats.Msg) (peanats.Unsubscriber, error) {
-	ret := _m.Called(subj, queue, ch)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ChanQueueSubscribe")
-	}
-
-	var r0 peanats.Unsubscriber
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string, chan peanats.Msg) (peanats.Unsubscriber, error)); ok {
-		return rf(subj, queue, ch)
-	}
-	if rf, ok := ret.Get(0).(func(string, string, chan peanats.Msg) peanats.Unsubscriber); ok {
-		r0 = rf(subj, queue, ch)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(peanats.Unsubscriber)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(string, string, chan peanats.Msg) error); ok {
-		r1 = rf(subj, queue, ch)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// Connection_ChanQueueSubscribe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChanQueueSubscribe'
-type Connection_ChanQueueSubscribe_Call struct {
-	*mock.Call
-}
-
-// ChanQueueSubscribe is a helper method to define mock.On call
-//   - subj string
-//   - queue string
-//   - ch chan peanats.Msg
-func (_e *Connection_Expecter) ChanQueueSubscribe(subj interface{}, queue interface{}, ch interface{}) *Connection_ChanQueueSubscribe_Call {
-	return &Connection_ChanQueueSubscribe_Call{Call: _e.mock.On("ChanQueueSubscribe", subj, queue, ch)}
-}
-
-func (_c *Connection_ChanQueueSubscribe_Call) Run(run func(subj string, queue string, ch chan peanats.Msg)) *Connection_ChanQueueSubscribe_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(chan peanats.Msg))
-	})
-	return _c
-}
-
-func (_c *Connection_ChanQueueSubscribe_Call) Return(_a0 peanats.Unsubscriber, _a1 error) *Connection_ChanQueueSubscribe_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *Connection_ChanQueueSubscribe_Call) RunAndReturn(run func(string, string, chan peanats.Msg) (peanats.Unsubscriber, error)) *Connection_ChanQueueSubscribe_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ChanSubscribe provides a mock function with given fields: subj, ch
-func (_m *Connection) ChanSubscribe(subj string, ch chan peanats.Msg) (peanats.Unsubscriber, error) {
-	ret := _m.Called(subj, ch)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ChanSubscribe")
-	}
-
-	var r0 peanats.Unsubscriber
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string, chan peanats.Msg) (peanats.Unsubscriber, error)); ok {
-		return rf(subj, ch)
-	}
-	if rf, ok := ret.Get(0).(func(string, chan peanats.Msg) peanats.Unsubscriber); ok {
-		r0 = rf(subj, ch)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(peanats.Unsubscriber)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(string, chan peanats.Msg) error); ok {
-		r1 = rf(subj, ch)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// Connection_ChanSubscribe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChanSubscribe'
-type Connection_ChanSubscribe_Call struct {
-	*mock.Call
-}
-
-// ChanSubscribe is a helper method to define mock.On call
-//   - subj string
-//   - ch chan peanats.Msg
-func (_e *Connection_Expecter) ChanSubscribe(subj interface{}, ch interface{}) *Connection_ChanSubscribe_Call {
-	return &Connection_ChanSubscribe_Call{Call: _e.mock.On("ChanSubscribe", subj, ch)}
-}
-
-func (_c *Connection_ChanSubscribe_Call) Run(run func(subj string, ch chan peanats.Msg)) *Connection_ChanSubscribe_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(chan peanats.Msg))
-	})
-	return _c
-}
-
-func (_c *Connection_ChanSubscribe_Call) Return(_a0 peanats.Unsubscriber, _a1 error) *Connection_ChanSubscribe_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *Connection_ChanSubscribe_Call) RunAndReturn(run func(string, chan peanats.Msg) (peanats.Unsubscriber, error)) *Connection_ChanSubscribe_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Close provides a mock function with no fields
 func (_m *Connection) Close() {
 	_m.Called()
@@ -265,65 +146,6 @@ func (_c *Connection_Publish_Call) RunAndReturn(run func(context.Context, peanat
 	return _c
 }
 
-// QueueSubscribe provides a mock function with given fields: subj, queue
-func (_m *Connection) QueueSubscribe(subj string, queue string) (peanats.Subscription, error) {
-	ret := _m.Called(subj, queue)
-
-	if len(ret) == 0 {
-		panic("no return value specified for QueueSubscribe")
-	}
-
-	var r0 peanats.Subscription
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string) (peanats.Subscription, error)); ok {
-		return rf(subj, queue)
-	}
-	if rf, ok := ret.Get(0).(func(string, string) peanats.Subscription); ok {
-		r0 = rf(subj, queue)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(peanats.Subscription)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = rf(subj, queue)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// Connection_QueueSubscribe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'QueueSubscribe'
-type Connection_QueueSubscribe_Call struct {
-	*mock.Call
-}
-
-// QueueSubscribe is a helper method to define mock.On call
-//   - subj string
-//   - queue string
-func (_e *Connection_Expecter) QueueSubscribe(subj interface{}, queue interface{}) *Connection_QueueSubscribe_Call {
-	return &Connection_QueueSubscribe_Call{Call: _e.mock.On("QueueSubscribe", subj, queue)}
-}
-
-func (_c *Connection_QueueSubscribe_Call) Run(run func(subj string, queue string)) *Connection_QueueSubscribe_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *Connection_QueueSubscribe_Call) Return(_a0 peanats.Subscription, _a1 error) *Connection_QueueSubscribe_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *Connection_QueueSubscribe_Call) RunAndReturn(run func(string, string) (peanats.Subscription, error)) *Connection_QueueSubscribe_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Request provides a mock function with given fields: ctx, msg
 func (_m *Connection) Request(ctx context.Context, msg peanats.Msg) (peanats.Msg, error) {
 	ret := _m.Called(ctx, msg)
@@ -383,9 +205,16 @@ func (_c *Connection_Request_Call) RunAndReturn(run func(context.Context, peanat
 	return _c
 }
 
-// Subscribe provides a mock function with given fields: subj
-func (_m *Connection) Subscribe(subj string) (peanats.Subscription, error) {
-	ret := _m.Called(subj)
+// Subscribe provides a mock function with given fields: ctx, subj, opts
+func (_m *Connection) Subscribe(ctx context.Context, subj string, opts ...peanats.SubscribeOption) (peanats.Subscription, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, subj)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Subscribe")
@@ -393,19 +222,19 @@ func (_m *Connection) Subscribe(subj string) (peanats.Subscription, error) {
 
 	var r0 peanats.Subscription
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (peanats.Subscription, error)); ok {
-		return rf(subj)
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...peanats.SubscribeOption) (peanats.Subscription, error)); ok {
+		return rf(ctx, subj, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(string) peanats.Subscription); ok {
-		r0 = rf(subj)
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...peanats.SubscribeOption) peanats.Subscription); ok {
+		r0 = rf(ctx, subj, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(peanats.Subscription)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(subj)
+	if rf, ok := ret.Get(1).(func(context.Context, string, ...peanats.SubscribeOption) error); ok {
+		r1 = rf(ctx, subj, opts...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -419,14 +248,23 @@ type Connection_Subscribe_Call struct {
 }
 
 // Subscribe is a helper method to define mock.On call
+//   - ctx context.Context
 //   - subj string
-func (_e *Connection_Expecter) Subscribe(subj interface{}) *Connection_Subscribe_Call {
-	return &Connection_Subscribe_Call{Call: _e.mock.On("Subscribe", subj)}
+//   - opts ...peanats.SubscribeOption
+func (_e *Connection_Expecter) Subscribe(ctx interface{}, subj interface{}, opts ...interface{}) *Connection_Subscribe_Call {
+	return &Connection_Subscribe_Call{Call: _e.mock.On("Subscribe",
+		append([]interface{}{ctx, subj}, opts...)...)}
 }
 
-func (_c *Connection_Subscribe_Call) Run(run func(subj string)) *Connection_Subscribe_Call {
+func (_c *Connection_Subscribe_Call) Run(run func(ctx context.Context, subj string, opts ...peanats.SubscribeOption)) *Connection_Subscribe_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		variadicArgs := make([]peanats.SubscribeOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(peanats.SubscribeOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
 	})
 	return _c
 }
@@ -436,7 +274,157 @@ func (_c *Connection_Subscribe_Call) Return(_a0 peanats.Subscription, _a1 error)
 	return _c
 }
 
-func (_c *Connection_Subscribe_Call) RunAndReturn(run func(string) (peanats.Subscription, error)) *Connection_Subscribe_Call {
+func (_c *Connection_Subscribe_Call) RunAndReturn(run func(context.Context, string, ...peanats.SubscribeOption) (peanats.Subscription, error)) *Connection_Subscribe_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SubscribeChan provides a mock function with given fields: ctx, subj, ch, opts
+func (_m *Connection) SubscribeChan(ctx context.Context, subj string, ch chan peanats.Msg, opts ...peanats.SubscribeChanOption) (peanats.Unsubscriber, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, subj, ch)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SubscribeChan")
+	}
+
+	var r0 peanats.Unsubscriber
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, chan peanats.Msg, ...peanats.SubscribeChanOption) (peanats.Unsubscriber, error)); ok {
+		return rf(ctx, subj, ch, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, chan peanats.Msg, ...peanats.SubscribeChanOption) peanats.Unsubscriber); ok {
+		r0 = rf(ctx, subj, ch, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(peanats.Unsubscriber)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, chan peanats.Msg, ...peanats.SubscribeChanOption) error); ok {
+		r1 = rf(ctx, subj, ch, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Connection_SubscribeChan_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubscribeChan'
+type Connection_SubscribeChan_Call struct {
+	*mock.Call
+}
+
+// SubscribeChan is a helper method to define mock.On call
+//   - ctx context.Context
+//   - subj string
+//   - ch chan peanats.Msg
+//   - opts ...peanats.SubscribeChanOption
+func (_e *Connection_Expecter) SubscribeChan(ctx interface{}, subj interface{}, ch interface{}, opts ...interface{}) *Connection_SubscribeChan_Call {
+	return &Connection_SubscribeChan_Call{Call: _e.mock.On("SubscribeChan",
+		append([]interface{}{ctx, subj, ch}, opts...)...)}
+}
+
+func (_c *Connection_SubscribeChan_Call) Run(run func(ctx context.Context, subj string, ch chan peanats.Msg, opts ...peanats.SubscribeChanOption)) *Connection_SubscribeChan_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]peanats.SubscribeChanOption, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(peanats.SubscribeChanOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), args[2].(chan peanats.Msg), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Connection_SubscribeChan_Call) Return(_a0 peanats.Unsubscriber, _a1 error) *Connection_SubscribeChan_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Connection_SubscribeChan_Call) RunAndReturn(run func(context.Context, string, chan peanats.Msg, ...peanats.SubscribeChanOption) (peanats.Unsubscriber, error)) *Connection_SubscribeChan_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SubscribeHandler provides a mock function with given fields: ctx, subj, handler, opts
+func (_m *Connection) SubscribeHandler(ctx context.Context, subj string, handler peanats.MsgHandler, opts ...peanats.SubscribeHandlerOption) (peanats.Unsubscriber, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, subj, handler)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SubscribeHandler")
+	}
+
+	var r0 peanats.Unsubscriber
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, peanats.MsgHandler, ...peanats.SubscribeHandlerOption) (peanats.Unsubscriber, error)); ok {
+		return rf(ctx, subj, handler, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, peanats.MsgHandler, ...peanats.SubscribeHandlerOption) peanats.Unsubscriber); ok {
+		r0 = rf(ctx, subj, handler, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(peanats.Unsubscriber)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, peanats.MsgHandler, ...peanats.SubscribeHandlerOption) error); ok {
+		r1 = rf(ctx, subj, handler, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Connection_SubscribeHandler_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubscribeHandler'
+type Connection_SubscribeHandler_Call struct {
+	*mock.Call
+}
+
+// SubscribeHandler is a helper method to define mock.On call
+//   - ctx context.Context
+//   - subj string
+//   - handler peanats.MsgHandler
+//   - opts ...peanats.SubscribeHandlerOption
+func (_e *Connection_Expecter) SubscribeHandler(ctx interface{}, subj interface{}, handler interface{}, opts ...interface{}) *Connection_SubscribeHandler_Call {
+	return &Connection_SubscribeHandler_Call{Call: _e.mock.On("SubscribeHandler",
+		append([]interface{}{ctx, subj, handler}, opts...)...)}
+}
+
+func (_c *Connection_SubscribeHandler_Call) Run(run func(ctx context.Context, subj string, handler peanats.MsgHandler, opts ...peanats.SubscribeHandlerOption)) *Connection_SubscribeHandler_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]peanats.SubscribeHandlerOption, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(peanats.SubscribeHandlerOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), args[2].(peanats.MsgHandler), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Connection_SubscribeHandler_Call) Return(_a0 peanats.Unsubscriber, _a1 error) *Connection_SubscribeHandler_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Connection_SubscribeHandler_Call) RunAndReturn(run func(context.Context, string, peanats.MsgHandler, ...peanats.SubscribeHandlerOption) (peanats.Unsubscriber, error)) *Connection_SubscribeHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
