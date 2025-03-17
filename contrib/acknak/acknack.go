@@ -8,6 +8,8 @@ import (
 	"context"
 	"errors"
 
+	"golang.org/x/exp/constraints"
+
 	"github.com/mikluko/peanats"
 )
 
@@ -71,7 +73,7 @@ func MiddlewareNakIgnore(errs ...error) Option {
 
 // MiddlewareDeliveryLimit sets the maximum number of times a message can be delivered.
 // If the limit is reached, TERM will be sent back with an appropriate reason.
-func MiddlewareDeliveryLimit[T ~int | ~uint | ~uint8 | ~uint32 | ~uint64](limit T) Option {
+func MiddlewareDeliveryLimit[T constraints.Integer](limit T) Option {
 	return func(p *params) {
 		p.deliveryLimit = uint64(limit)
 	}
