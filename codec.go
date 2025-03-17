@@ -62,6 +62,9 @@ func MarshalHeader(x any, header Header) ([]byte, error) {
 		return nil, err
 	}
 	header.Set(HeaderContentType, codec.ContentType().String())
+	if x == nil {
+		return nil, nil
+	}
 	return codec.Marshal(x)
 }
 
@@ -75,6 +78,9 @@ func ContentTypeHeaderCopy(dst, src Header) {
 
 // UnmarshalHeader decodes data into x using the codec specified in the header.
 func UnmarshalHeader(data []byte, x any, header Header) error {
+	if data == nil {
+		return nil
+	}
 	codec, err := CodecHeader(header)
 	if err != nil {
 		return err
