@@ -40,17 +40,6 @@ type MsgJetstream interface {
 	Ackable
 }
 
-func UpstreamHandler(ctx context.Context, msgh MsgHandler, errh ErrorHandler) nats.MsgHandler {
-	return func(msg *nats.Msg) {
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-		err := msgh.HandleMsg(ctx, NewMsg(msg))
-		if err != nil {
-			errh.HandleError(ctx, err)
-		}
-	}
-}
-
 type MsgHandler interface {
 	HandleMsg(context.Context, Msg) error
 }
