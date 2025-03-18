@@ -20,5 +20,5 @@ packages:
       MsgJetstream:
   github.com/mikluko/peanats/bucket:
     interfaces:
-      BucketEntry:
-      BucketWatcher:
+      Entry:
+      Watcher:

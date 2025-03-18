@@ -10,7 +10,7 @@ import (
 	"github.com/mikluko/peanats"
 )
 
-type BucketEntry[T any] interface {
+type Entry[T any] interface {
 	Bucket() string
 	Key() string
 	Header() peanats.Header
@@ -21,20 +21,20 @@ type BucketEntry[T any] interface {
 	Operation() jetstream.KeyValueOp
 }
 
-type PutBucketEntry[T any] interface {
+type PutEntry[T any] interface {
 	Key() string
 	Header() peanats.Header
 	Value() *T
 }
 
-type UpdateBucketEntry[T any] interface {
+type UpdateEntry[T any] interface {
 	Key() string
 	Header() peanats.Header
 	Value() *T
 	Revision() uint64
 }
 
-var _ BucketEntry[any] = (*entryImpl[any])(nil)
+var _ Entry[any] = (*entryImpl[any])(nil)
 
 type entry interface {
 	jetstream.KeyValueEntry

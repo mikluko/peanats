@@ -11,13 +11,13 @@ import (
 )
 
 type Bucket[T any] interface {
-	Get(ctx context.Context, key string) (BucketEntry[T], error)
-	GetRevision(ctx context.Context, key string, rev uint64) (BucketEntry[T], error)
-	Put(ctx context.Context, entry PutBucketEntry[T]) (uint64, error)
-	Update(ctx context.Context, entry UpdateBucketEntry[T]) (uint64, error)
+	Get(ctx context.Context, key string) (Entry[T], error)
+	GetRevision(ctx context.Context, key string, rev uint64) (Entry[T], error)
+	Put(ctx context.Context, entry PutEntry[T]) (uint64, error)
+	Update(ctx context.Context, entry UpdateEntry[T]) (uint64, error)
 	Delete(ctx context.Context, key string, opts ...DeleteOption) error
-	Watch(ctx context.Context, match string, opts ...BucketWatcherOption) (BucketWatcher[T], error)
-	WatchAll(ctx context.Context, opts ...BucketWatcherOption) (BucketWatcher[T], error)
+	Watch(ctx context.Context, match string, opts ...WatcherOption) (Watcher[T], error)
+	WatchAll(ctx context.Context, opts ...WatcherOption) (Watcher[T], error)
 }
 
 func NewBucket[T any](bucket jetstream.KeyValue, opts ...BucketOption) Bucket[T] {
@@ -63,7 +63,7 @@ func (s *bucketImpl[T]) deprefixed(key string) string {
 	return strings.TrimPrefix(key, fmt.Sprintf("%s.", s.prefix))
 }
 
-func (s *bucketImpl[T]) get(raw jetstream.KeyValueEntry) (_ BucketEntry[T], err error) {
+func (s *bucketImpl[T]) get(raw jetstream.KeyValueEntry) (_ Entry[T], err error) {
 	v := entryImpl[T]{
 		entry: raw,
 		key:   s.deprefixed(raw.Key()),
@@ -78,7 +78,7 @@ func (s *bucketImpl[T]) get(raw jetstream.KeyValueEntry) (_ BucketEntry[T], err 
 	return v, nil
 }
 
-func (s *bucketImpl[T]) Get(ctx context.Context, key string) (BucketEntry[T], error) {
+func (s *bucketImpl[T]) Get(ctx context.Context, key string) (Entry[T], error) {
 	raw, err := s.bucket.Get(ctx, s.prefixed(key))
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (s *bucketImpl[T]) Get(ctx context.Context, key string) (BucketEntry[T], er
 	return s.get(raw)
 }
 
-func (s *bucketImpl[T]) GetRevision(ctx context.Context, key string, rev uint64) (BucketEntry[T], error) {
+func (s *bucketImpl[T]) GetRevision(ctx context.Context, key string, rev uint64) (Entry[T], error) {
 	raw, err := s.bucket.GetRevision(ctx, s.prefixed(key), rev)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (s *bucketImpl[T]) GetRevision(ctx context.Context, key string, rev uint64)
 	return s.get(raw)
 }
 
-func (s *bucketImpl[T]) Put(ctx context.Context, entry PutBucketEntry[T]) (uint64, error) {
+func (s *bucketImpl[T]) Put(ctx context.Context, entry PutEntry[T]) (uint64, error) {
 	b, err := encodeBucketEntryHeader(entry.Header(), entry.Value())
 	if err != nil {
 		return 0, err
@@ -102,7 +102,7 @@ func (s *bucketImpl[T]) Put(ctx context.Context, entry PutBucketEntry[T]) (uint6
 	return s.bucket.Put(ctx, s.prefixed(entry.Key()), b)
 }
 
-func (s *bucketImpl[T]) Update(ctx context.Context, entry UpdateBucketEntry[T]) (uint64, error) {
+func (s *bucketImpl[T]) Update(ctx context.Context, entry UpdateEntry[T]) (uint64, error) {
 	b, err := encodeBucketEntryHeader(entry.Header(), entry.Value())
 	if err != nil {
 		return 0, err
@@ -128,7 +128,7 @@ func (s *bucketImpl[T]) Delete(ctx context.Context, key string, opts ...DeleteOp
 	return s.bucket.Delete(ctx, s.prefixed(key), opts...)
 }
 
-func (s *bucketImpl[T]) Watch(ctx context.Context, match string, opts ...BucketWatcherOption) (BucketWatcher[T], error) {
+func (s *bucketImpl[T]) Watch(ctx context.Context, match string, opts ...WatcherOption) (Watcher[T], error) {
 	params := bucketWatcherParams{}
 	for _, opt := range opts {
 		opt(&params)
@@ -137,9 +137,9 @@ func (s *bucketImpl[T]) Watch(ctx context.Context, match string, opts ...BucketW
 	if err != nil {
 		return nil, err
 	}
-	return NewBucketWatcher[T](w, append(opts, BucketWatcherPrefix(s.prefix))...), nil
+	return NewWatcher[T](w, append(opts, WatcherPrefix(s.prefix))...), nil
 }
 
-func (s *bucketImpl[T]) WatchAll(ctx context.Context, opts ...BucketWatcherOption) (BucketWatcher[T], error) {
+func (s *bucketImpl[T]) WatchAll(ctx context.Context, opts ...WatcherOption) (Watcher[T], error) {
 	return s.Watch(ctx, ">", opts...)
 }

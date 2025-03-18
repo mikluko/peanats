@@ -14,17 +14,17 @@ import (
 
 var ErrInitialValuesOver = errors.New("initial values done")
 
-type BucketWatcher[T any] interface {
-	Next() (BucketEntry[T], error)
+type Watcher[T any] interface {
+	Next() (Entry[T], error)
 	Stop() error
 }
 
-func NewBucketWatcher[T any](w jetstream.KeyWatcher, opts ...BucketWatcherOption) BucketWatcher[T] {
+func NewWatcher[T any](w jetstream.KeyWatcher, opts ...WatcherOption) Watcher[T] {
 	p := bucketWatcherParams{}
 	for _, opt := range opts {
 		opt(&p)
 	}
-	return &bucketWatcherImpl[T]{
+	return &watcherImpl[T]{
 		watcher:  w,
 		prefix:   p.prefix,
 		metaOnly: p.metaOnly,
@@ -37,60 +37,60 @@ type bucketWatcherParams struct {
 	upstreamOpts []jetstream.WatchOpt
 }
 
-type BucketWatcherOption func(params *bucketWatcherParams)
+type WatcherOption func(params *bucketWatcherParams)
 
-func BucketWatcherPrefix(prefix string) BucketWatcherOption {
+func WatcherPrefix(prefix string) WatcherOption {
 	return func(params *bucketWatcherParams) {
 		params.prefix = prefix
 	}
 }
 
-func BucketWatcherMetaOnly() BucketWatcherOption {
+func WatcherMetaOnly() WatcherOption {
 	return func(params *bucketWatcherParams) {
 		params.upstreamOpts = append(params.upstreamOpts, jetstream.MetaOnly())
 		params.metaOnly = true
 	}
 }
 
-func BucketWatcherUpdatesOnly() BucketWatcherOption {
+func WatcherUpdatesOnly() WatcherOption {
 	return func(params *bucketWatcherParams) {
 		params.upstreamOpts = append(params.upstreamOpts, jetstream.UpdatesOnly())
 	}
 }
 
-func BucketWatcherIgnoreDeletes() BucketWatcherOption {
+func WatcherIgnoreDeletes() WatcherOption {
 	return func(params *bucketWatcherParams) {
 		params.upstreamOpts = append(params.upstreamOpts, jetstream.IgnoreDeletes())
 	}
 }
 
-func BucketWatcherIncludeHistory() BucketWatcherOption {
+func WatcherIncludeHistory() WatcherOption {
 	return func(params *bucketWatcherParams) {
 		params.upstreamOpts = append(params.upstreamOpts, jetstream.IncludeHistory())
 	}
 }
 
-func BucketWatcherResumeFromRevision(revision uint64) BucketWatcherOption {
+func WatcherResumeFromRevision(revision uint64) WatcherOption {
 	return func(params *bucketWatcherParams) {
 		params.upstreamOpts = append(params.upstreamOpts, jetstream.ResumeFromRevision(revision))
 	}
 }
 
-type bucketWatcherImpl[T any] struct {
+type watcherImpl[T any] struct {
 	watcher     jetstream.KeyWatcher
 	watcherOpts []jetstream.WatchOpt
 	prefix      string
 	metaOnly    bool
 }
 
-func (w *bucketWatcherImpl[T]) deprefixed(key string) string {
+func (w *watcherImpl[T]) deprefixed(key string) string {
 	if w.prefix == "" {
 		return key
 	}
 	return strings.TrimPrefix(key, fmt.Sprintf("%s.", w.prefix))
 }
 
-func (w *bucketWatcherImpl[T]) Next() (_ BucketEntry[T], err error) {
+func (w *watcherImpl[T]) Next() (_ Entry[T], err error) {
 	for raw := range w.watcher.Updates() {
 		// nats will send a nil entry when it has received all initial values
 		if raw == nil {
@@ -115,17 +115,17 @@ func (w *bucketWatcherImpl[T]) Next() (_ BucketEntry[T], err error) {
 	return nil, io.EOF
 }
 
-func (w *bucketWatcherImpl[T]) Stop() error {
+func (w *watcherImpl[T]) Stop() error {
 	return w.watcher.Stop()
 }
 
 type BucketEntryHandler[T any] interface {
-	HandleBucketEntry(context.Context, BucketEntry[T]) error
+	HandleBucketEntry(context.Context, Entry[T]) error
 }
 
-type BucketEntryHandlerFunc[T any] func(context.Context, BucketEntry[T]) error
+type BucketEntryHandlerFunc[T any] func(context.Context, Entry[T]) error
 
-func (f BucketEntryHandlerFunc[T]) HandleBucketEntry(ctx context.Context, e BucketEntry[T]) error {
+func (f BucketEntryHandlerFunc[T]) HandleBucketEntry(ctx context.Context, e Entry[T]) error {
 	return f(ctx, e)
 }
 
@@ -150,7 +150,7 @@ func WatchErrorHandler(errh peanats.ErrorHandler) WatchOption {
 	}
 }
 
-func Watch[T any](ctx context.Context, w BucketWatcher[T], h BucketEntryHandler[T], opts ...WatchOption) error {
+func Watch[T any](ctx context.Context, w Watcher[T], h BucketEntryHandler[T], opts ...WatchOption) error {
 	params := watchParams{
 		subm: peanats.DefaultSubmitter,
 		errh: peanats.DefaultErrorHandler,

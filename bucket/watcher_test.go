@@ -35,7 +35,7 @@ func TestWatcher(t *testing.T) {
 	nw := jetstreammock.NewKeyWatcher(t)
 	nw.EXPECT().Updates().Return(ch)
 
-	w := bucket.NewBucketWatcher[testModel](nw, bucket.BucketWatcherPrefix("parson"))
+	w := bucket.NewWatcher[testModel](nw, bucket.WatcherPrefix("parson"))
 
 	e, err := w.Next()
 	require.NoError(t, err)
@@ -56,11 +56,11 @@ func TestWatcher(t *testing.T) {
 
 func TestWatch(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
-		m := bucketmock.NewBucketEntry[testModel](t)
+		m := bucketmock.NewEntry[testModel](t)
 		m.EXPECT().Key().Return("parson.had.a.dog")
 		m.EXPECT().Value().Return(&testModel{Name: "balooney"})
 
-		w := bucketmock.NewBucketWatcher[testModel](t)
+		w := bucketmock.NewWatcher[testModel](t)
 
 		w.EXPECT().Next().Return(m, nil).Once()
 		w.EXPECT().Next().Return(nil, bucket.ErrInitialValuesOver).Once()
@@ -70,7 +70,7 @@ func TestWatch(t *testing.T) {
 		wg := sync.WaitGroup{}
 		wg.Add(2)
 
-		h := bucket.BucketEntryHandlerFunc[testModel](func(ctx context.Context, b bucket.BucketEntry[testModel]) error {
+		h := bucket.BucketEntryHandlerFunc[testModel](func(ctx context.Context, b bucket.Entry[testModel]) error {
 			assert.Equal(t, "parson.had.a.dog", b.Key())
 			assert.Equal(t, &testModel{Name: "balooney"}, b.Value())
 			wg.Done()

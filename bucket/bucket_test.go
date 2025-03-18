@@ -41,8 +41,8 @@ func (t *testPutUpdateEntryImpl) Revision() uint64 {
 }
 
 var (
-	_ bucket.PutBucketEntry[testModel]    = (*testPutUpdateEntryImpl)(nil)
-	_ bucket.UpdateBucketEntry[testModel] = (*testPutUpdateEntryImpl)(nil)
+	_ bucket.PutEntry[testModel]    = (*testPutUpdateEntryImpl)(nil)
+	_ bucket.UpdateEntry[testModel] = (*testPutUpdateEntryImpl)(nil)
 )
 
 func TestBucket_New(t *testing.T) {
