@@ -99,7 +99,7 @@ func worker(idx int) (raft.State, error) {
 		raft.WithStateChangeHandler(&stateChangeHandler{log: log}),
 	)
 	if err != nil {
-		return raft.RaftStateFollower, err
+		return raft.StateFollower, err
 	}
 
 	var state raft.State
@@ -107,7 +107,7 @@ func worker(idx int) (raft.State, error) {
 	state = r.State()
 	log.Debug("reached", slog.String("state", state.String()))
 
-	err = r.Wait(ctx, raft.RaftStateCandidate)
+	err = r.Wait(ctx, raft.StateCandidate)
 	if err != nil {
 		return state, err
 	}
@@ -115,7 +115,7 @@ func worker(idx int) (raft.State, error) {
 	state = r.State()
 	log.Debug("reached", slog.String("state", state.String()))
 
-	err = r.Wait(ctx, raft.RaftStateLeader)
+	err = r.Wait(ctx, raft.StateLeader)
 	if err != nil {
 		return state, err
 	}

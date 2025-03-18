@@ -13,10 +13,10 @@ import (
 type State = graft.State
 
 const (
-	RaftStateFollower  = graft.FOLLOWER
-	RaftStateCandidate = graft.CANDIDATE
-	RaftStateLeader    = graft.LEADER
-	RaftStateClosed    = graft.CLOSED
+	StateFollower  = graft.FOLLOWER
+	StateCandidate = graft.CANDIDATE
+	StateLeader    = graft.LEADER
+	StateClosed    = graft.CLOSED
 )
 
 type Raft interface {
@@ -131,13 +131,13 @@ type raftImpl struct {
 
 func (r *raftImpl) State() State {
 	if r.node == nil {
-		return RaftStateClosed
+		return StateClosed
 	}
 	return r.node.State()
 }
 
 func (r *raftImpl) IsLeader() bool {
-	return r.State() == RaftStateLeader
+	return r.State() == StateLeader
 }
 
 func (r *raftImpl) Wait(ctx context.Context, state State) error {
