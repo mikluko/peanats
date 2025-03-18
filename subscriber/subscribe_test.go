@@ -84,7 +84,7 @@ func benchmarkSubscribeChan(b *testing.B, opts ...subscriber.SubscribeOption) {
 		b.Fatal(err)
 	}
 
-	sub, err := nc.ChanSubscribe(subj, ch)
+	sub, err := nc.SubscribeChan(b.Context(), subj, ch)
 	if err != nil {
 		b.Fatal(err)
 	}
