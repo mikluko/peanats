@@ -34,7 +34,7 @@ func main() {
 		panic(err)
 	}
 
-	sub, err := nc.ChanSubscribe("peanuts.examples.pubsub", ch)
+	sub, err := nc.SubscribeChan(ctx, "peanuts.examples.pubsub", ch)
 	defer sub.Unsubscribe()
 
 	<-ctx.Done()

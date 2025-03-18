@@ -41,7 +41,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	sub, err := conn.ChanSubscribe("peanuts.examples.clisrv", ch)
+	sub, err := conn.SubscribeChan(ctx, "peanuts.examples.clisrv", ch)
 	defer sub.Unsubscribe()
 
 	<-ctx.Done()
