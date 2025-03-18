@@ -61,7 +61,9 @@ func MarshalHeader(x any, header Header) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	header.Set(HeaderContentType, codec.ContentType().String())
+	if header != nil {
+		header.Set(HeaderContentType, codec.ContentType().String())
+	}
 	if x == nil {
 		return nil, nil
 	}

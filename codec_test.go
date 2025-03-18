@@ -12,27 +12,37 @@ func TestMarshalHeader(t *testing.T) {
 		Foo string `json:"foo"`
 	}
 	tests := []struct {
-		name   string
-		header Header
-		model  any
-		want   string
+		name       string
+		header     Header
+		model      any
+		want       string
+		wantHeader Header
 	}{
 		{
-			name:  "default",
+			name:       "default",
+			header:     Header{},
+			model:      model{"bar"},
+			want:       `{"foo":"bar"}`,
+			wantHeader: Header{HeaderContentType: []string{ContentTypeJson.String()}},
+		},
+		{
+			name:  "default nil header",
 			model: model{"bar"},
 			want:  `{"foo":"bar"}`,
 		},
 		{
-			name:   "json",
-			header: Header{HeaderContentType: []string{ContentTypeJson.String()}},
-			model:  model{"bar"},
-			want:   `{"foo":"bar"}`,
+			name:       "json",
+			header:     Header{HeaderContentType: []string{ContentTypeJson.String()}},
+			model:      model{"bar"},
+			want:       `{"foo":"bar"}`,
+			wantHeader: Header{HeaderContentType: []string{ContentTypeJson.String()}},
 		},
 		{
-			name:   "yaml",
-			header: Header{HeaderContentType: []string{ContentTypeYaml.String()}},
-			model:  model{"bar"},
-			want:   "foo: bar\n",
+			name:       "yaml",
+			header:     Header{HeaderContentType: []string{ContentTypeYaml.String()}},
+			model:      model{"bar"},
+			want:       "foo: bar\n",
+			wantHeader: Header{HeaderContentType: []string{ContentTypeYaml.String()}},
 		},
 	}
 	for _, tt := range tests {
@@ -40,6 +50,7 @@ func TestMarshalHeader(t *testing.T) {
 			data, err := MarshalHeader(tt.model, tt.header)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, string(data))
+			assert.Equal(t, tt.wantHeader, tt.header)
 		})
 	}
 }
