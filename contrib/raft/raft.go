@@ -65,6 +65,12 @@ type StateChangeHandler interface {
 	HandleStateChange(ctx context.Context, from State, to State) error
 }
 
+type StateChangeHandlerFunc func(ctx context.Context, from State, to State) error
+
+func (f StateChangeHandlerFunc) HandleStateChange(ctx context.Context, from State, to State) error {
+	return f(ctx, from, to)
+}
+
 type nullStateChangeHandlerImpl struct{}
 
 func (n nullStateChangeHandlerImpl) HandleStateChange(_ context.Context, _ State, _ State) error {
