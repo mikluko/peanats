@@ -119,13 +119,13 @@ func (w *watcherImpl[T]) Stop() error {
 	return w.watcher.Stop()
 }
 
-type BucketEntryHandler[T any] interface {
-	HandleBucketEntry(context.Context, Entry[T]) error
+type EntryHandler[T any] interface {
+	HandleEntry(context.Context, Entry[T]) error
 }
 
-type BucketEntryHandlerFunc[T any] func(context.Context, Entry[T]) error
+type EntryHandlerFunc[T any] func(context.Context, Entry[T]) error
 
-func (f BucketEntryHandlerFunc[T]) HandleBucketEntry(ctx context.Context, e Entry[T]) error {
+func (f EntryHandlerFunc[T]) HandleEntry(ctx context.Context, e Entry[T]) error {
 	return f(ctx, e)
 }
 
@@ -150,7 +150,7 @@ func WatchErrorHandler(errh peanats.ErrorHandler) WatchOption {
 	}
 }
 
-func Watch[T any](ctx context.Context, w Watcher[T], h BucketEntryHandler[T], opts ...WatchOption) error {
+func Watch[T any](ctx context.Context, w Watcher[T], h EntryHandler[T], opts ...WatchOption) error {
 	params := watchParams{
 		subm: peanats.DefaultSubmitter,
 		errh: peanats.DefaultErrorHandler,
@@ -170,7 +170,7 @@ func Watch[T any](ctx context.Context, w Watcher[T], h BucketEntryHandler[T], op
 			return err
 		}
 		params.subm.Submit(func() {
-			err := h.HandleBucketEntry(ctx, e)
+			err := h.HandleEntry(ctx, e)
 			if err != nil {
 				params.errh.HandleError(ctx, err)
 			}

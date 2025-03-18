@@ -70,7 +70,7 @@ func TestWatch(t *testing.T) {
 		wg := sync.WaitGroup{}
 		wg.Add(2)
 
-		h := bucket.BucketEntryHandlerFunc[testModel](func(ctx context.Context, b bucket.Entry[testModel]) error {
+		h := bucket.EntryHandlerFunc[testModel](func(ctx context.Context, b bucket.Entry[testModel]) error {
 			assert.Equal(t, "parson.had.a.dog", b.Key())
 			assert.Equal(t, &testModel{Name: "balooney"}, b.Value())
 			wg.Done()
