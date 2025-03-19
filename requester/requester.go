@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/nats-io/nats.go"
 
@@ -229,51 +230,53 @@ func ResponseReceiverRequestOptions(opts ...RequestOption) ResponseReceiverOptio
 }
 
 type responseReceiverImpl[T any] struct {
-	msg peanats.Msg
-	buf chan peanats.Msg
-	sub peanats.Unsubscriber
-	skp Skipper
-	pdr Proceeder
+	msg     peanats.Msg
+	buf     chan peanats.Msg
+	sub     peanats.Unsubscriber
+	skp     Skipper
+	pdr     Proceeder
+	proceed bool
+	once    sync.Once
 }
 
 var (
-	ErrSkipped = errors.New("message skipped by the skipper")
-	ErrOver    = fmt.Errorf("%w: sequence is over", io.EOF)
+	ErrSkip = errors.New("message skipped by the skipper")
+	ErrOver = fmt.Errorf("%w: sequence is over", io.EOF)
 )
 
-func (r *responseReceiverImpl[T]) proceed(ctx context.Context, msg peanats.Msg) error {
-	if proceed, err := r.pdr.Proceed(ctx, msg); err != nil {
-		return err
-	} else if !proceed {
-		return ErrOver
+func (r *responseReceiverImpl[T]) Next(ctx context.Context) (_ Response[T], err error) {
+	r.once.Do(func() {
+		r.proceed = true
+	})
+	if !r.proceed {
+		return nil, ErrOver
 	}
-	return nil
-}
-
-func (r *responseReceiverImpl[T]) Next(ctx context.Context) (Response[T], error) {
-	if r.msg != nil {
-		if err := r.proceed(ctx, r.msg); err != nil {
-			return nil, err
-		}
-	}
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case r.msg = <-r.buf:
-		if skip, err := r.skp.Skip(ctx, r.msg); err != nil {
-			return nil, err
-		} else if skip {
-			if err := r.proceed(ctx, r.msg); err != nil {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case r.msg = <-r.buf:
+			r.proceed, err = r.pdr.Proceed(ctx, r.msg)
+			if err != nil {
 				return nil, err
 			}
-			return nil, ErrSkipped
+			if skip, err := r.skp.Skip(ctx, r.msg); err != nil {
+				return nil, err
+			} else if !skip {
+				x := new(T)
+				err := peanats.UnmarshalHeader(r.msg.Data(), x, r.msg.Header())
+				if err != nil {
+					return nil, err
+				}
+				return &responseImpl[T]{header: r.msg.Header(), payload: x}, nil
+			} else { // skip == true
+				if r.proceed {
+					return nil, ErrSkip
+				} else {
+					return nil, ErrOver
+				}
+			}
 		}
-		x := new(T)
-		err := peanats.UnmarshalHeader(r.msg.Data(), x, r.msg.Header())
-		if err != nil {
-			return nil, err
-		}
-		return &responseImpl[T]{header: r.msg.Header(), payload: x}, nil
 	}
 }
 

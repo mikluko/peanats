@@ -153,6 +153,9 @@ func BenchmarkClientImpl_ResponseReceiver(b *testing.B) {
 			}
 		}
 		_, err = rcv.Next(b.Context())
+		if !errors.Is(err, requester.ErrOver) {
+			b.Fatal(err)
+		}
 		if !errors.Is(err, io.EOF) {
 			b.Fatal(err)
 		}
