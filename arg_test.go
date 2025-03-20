@@ -39,7 +39,7 @@ func TestArgumentMessageHandler(t *testing.T) {
 		m.EXPECT().Data().Return([]byte(`{`))
 		err := h.HandleMsg(t.Context(), m)
 		require.Error(t, err)
-		require.ErrorIs(t, err, peanats.ErrArgumentDecodeFailed)
+		require.ErrorIs(t, err, peanats.ErrArgumentUnmarshalFailed)
 	})
 	t.Run("handler error", func(t *testing.T) {
 		handlerErr := fmt.Errorf("test error")

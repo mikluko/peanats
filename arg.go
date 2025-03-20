@@ -25,23 +25,18 @@ func (f ArgHandlerFunc[T]) HandleArg(ctx context.Context, a Arg[T]) error {
 	return f(ctx, a)
 }
 
-var ErrArgumentDecodeFailed = errors.New("failed to decode message into argument")
+var ErrArgumentUnmarshalFailed = errors.New("failed to unmarshal message into argument")
 
 func MsgHandlerFromArgHandler[T any](h ArgHandler[T]) MsgHandler {
 	pool := xargpool.New[T]()
 	return MsgHandlerFunc(func(ctx context.Context, m Msg) error {
-		codec, err := CodecContentType(ContentTypeHeader(m.Header()))
-		if err != nil {
-			return err
-		}
-
 		y := pool.Acquire(ctx)
 		x := y.Value()
 		defer y.Release()
 
-		err = codec.Unmarshal(m.Data(), x)
+		err := UnmarshalHeader(m.Data(), x, m.Header())
 		if err != nil {
-			return fmt.Errorf("%w: %w", ErrArgumentDecodeFailed, err)
+			return fmt.Errorf("%w: %w", ErrArgumentUnmarshalFailed, err)
 		}
 
 		return h.HandleArg(ctx, NewArg(m, x))
