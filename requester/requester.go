@@ -16,8 +16,16 @@ type RequestOption func(*requestParams)
 
 type requestParams struct {
 	header peanats.Header
-	ctype  peanats.ContentType
-	buffer uint
+}
+
+func makeRequestParams(opts ...RequestOption) requestParams {
+	p := requestParams{
+		header: peanats.Header{peanats.HeaderContentType: []string{peanats.ContentTypeJson.String()}},
+	}
+	for _, opt := range opts {
+		opt(&p)
+	}
+	return p
 }
 
 // RequestHeader sets the header for the message. It can be used multiple times, but each time it will
@@ -30,7 +38,7 @@ func RequestHeader(header peanats.Header) RequestOption {
 
 func RequestContentType(c peanats.ContentType) RequestOption {
 	return func(p *requestParams) {
-		p.ctype = c
+		p.header.Set(peanats.HeaderContentType, c.String())
 	}
 }
 
@@ -48,13 +56,7 @@ type clientImpl[RQ, RS any] struct {
 }
 
 func (c *clientImpl[RQ, RS]) Request(ctx context.Context, subj string, rq *RQ, opts ...RequestOption) (Response[RS], error) {
-	p := requestParams{
-		header: make(peanats.Header),
-		ctype:  peanats.DefaultContentType,
-	}
-	for _, opt := range opts {
-		opt(&p)
-	}
+	p := makeRequestParams(opts...)
 	data, err := peanats.MarshalHeader(rq, p.header)
 	if err != nil {
 		return nil, err
@@ -80,13 +82,7 @@ func (c *clientImpl[RQ, RS]) ResponseReceiver(ctx context.Context, subj string, 
 	for _, opt := range opts {
 		opt(&rcvParams)
 	}
-	reqParams := requestParams{
-		header: make(peanats.Header),
-		ctype:  peanats.DefaultContentType,
-	}
-	for _, opt := range rcvParams.rqOpts {
-		opt(&reqParams)
-	}
+	reqParams := makeRequestParams(rcvParams.rqOpts...)
 	data, err := peanats.MarshalHeader(rq, reqParams.header)
 	if err != nil {
 		return nil, err
