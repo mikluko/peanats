@@ -60,11 +60,12 @@ func ChainMsgMiddleware(h MsgHandler, mw ...MsgMiddleware) MsgHandler {
 }
 
 func NewMsg(m *nats.Msg) Msg {
-	return &msgImpl{m}
+	return &msgImpl{m, nil}
 }
 
 type msgImpl struct {
 	*nats.Msg
+	header Header
 }
 
 func (m *msgImpl) Subject() string {
@@ -72,7 +73,13 @@ func (m *msgImpl) Subject() string {
 }
 
 func (m *msgImpl) Header() Header {
-	return Header(m.Msg.Header)
+	if m.header != nil {
+		m.header = Header(m.Msg.Header)
+	}
+	if m.header == nil {
+		m.header = make(Header)
+	}
+	return m.header
 }
 
 func (m *msgImpl) Data() []byte {
@@ -105,11 +112,12 @@ func (m *msgImpl) RespondMsg(_ context.Context, msg Msg) error {
 }
 
 func NewJetstream(m jetstream.Msg) MsgJetstream {
-	return &msgJetstreamImpl{m}
+	return &msgJetstreamImpl{m, nil}
 }
 
 type msgJetstreamImpl struct {
 	jetstream.Msg
+	header Header
 }
 
 func (m *msgJetstreamImpl) Ack(_ context.Context) error {
@@ -133,5 +141,11 @@ func (m *msgJetstreamImpl) InProgress(_ context.Context) error {
 }
 
 func (m *msgJetstreamImpl) Header() Header {
-	return Header(m.Msg.Headers())
+	if m.header == nil {
+		m.header = Header(m.Msg.Headers())
+	}
+	if m.header == nil {
+		m.header = make(Header)
+	}
+	return m.header
 }
