@@ -2,6 +2,7 @@ package logging
 
 import (
 	"context"
+	"time"
 
 	"github.com/mikluko/peanats"
 )
@@ -30,11 +31,12 @@ func AccessLogMiddleware(opts ...AccessLogMiddlewareOption) peanats.MsgMiddlewar
 	}
 	return func(h peanats.MsgHandler) peanats.MsgHandler {
 		return peanats.MsgHandlerFunc(func(ctx context.Context, m peanats.Msg) error {
+			t := time.Now()
 			err := h.HandleMsg(ctx, m)
 			if err != nil {
 				return err
 			}
-			p.logger.Log(ctx, "done", "subject", m.Subject(), "header", m.Header())
+			p.logger.Log(ctx, "done", "subject", m.Subject(), "header", m.Header(), "latency", time.Since(t))
 			return nil
 		})
 	}
