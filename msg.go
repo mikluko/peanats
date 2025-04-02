@@ -73,7 +73,7 @@ func (m *msgImpl) Subject() string {
 }
 
 func (m *msgImpl) Header() Header {
-	if m.header != nil {
+	if m.header == nil {
 		m.header = Header(m.Msg.Header)
 	}
 	if m.header == nil {
