@@ -224,9 +224,9 @@ func (c *connectionImpl) SubscribeChan(_ context.Context, subj string, ch chan M
 		err error
 	)
 	if p.queue != "" {
-		sub, err = c.nc.ChanSubscribe(subj, c.mirror(ch))
-	} else {
 		sub, err = c.nc.ChanQueueSubscribe(subj, p.queue, c.mirror(ch))
+	} else {
+		sub, err = c.nc.ChanSubscribe(subj, c.mirror(ch))
 	}
 	if err != nil {
 		return nil, err
