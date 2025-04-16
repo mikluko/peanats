@@ -6,7 +6,7 @@ require (
 	github.com/alitto/pond/v2 v2.2.0
 	github.com/jackc/puddle/v2 v2.2.2
 	github.com/nats-io/graft v0.0.0-20240402192949-3f8f888dc8af
-	github.com/nats-io/nats-server/v2 v2.10.26
+	github.com/nats-io/nats-server/v2 v2.10.27
 	github.com/nats-io/nats.go v1.39.1
 	github.com/samber/slog-multi v1.4.0
 	github.com/stretchr/testify v1.10.0
