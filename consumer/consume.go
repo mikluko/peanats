@@ -37,6 +37,13 @@ func ConsumeErrorHandler(errh peanats.ErrorHandler) ConsumeOption {
 	}
 }
 
+// ConsumePullMaxMessages sets the maximum number of messages to pull per request.
+func ConsumePullMaxMessages(size int) ConsumeOption {
+	return func(p *consumeParams) {
+		p.opts = append(p.opts, jetstream.PullMaxMessages(size))
+	}
+}
+
 type consumer interface {
 	Consume(jetstream.MessageHandler, ...jetstream.PullConsumeOpt) (jetstream.ConsumeContext, error)
 }
