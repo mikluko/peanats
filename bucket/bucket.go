@@ -13,9 +13,11 @@ import (
 type Bucket[T any] interface {
 	Get(ctx context.Context, key string) (Entry[T], error)
 	GetRevision(ctx context.Context, key string, rev uint64) (Entry[T], error)
+	GetLatestRevision(ctx context.Context, key string) (Entry[T], error)
 	Put(ctx context.Context, entry PutEntry[T]) (uint64, error)
 	Update(ctx context.Context, entry UpdateEntry[T]) (uint64, error)
 	Delete(ctx context.Context, key string, opts ...DeleteOption) error
+	History(ctx context.Context, key string, opts ...HistoryOption) ([]Entry[T], error)
 	Watch(ctx context.Context, match string, opts ...WatcherOption) (Watcher[T], error)
 	WatchAll(ctx context.Context, opts ...WatcherOption) (Watcher[T], error)
 }
@@ -94,6 +96,20 @@ func (s *bucketImpl[T]) GetRevision(ctx context.Context, key string, rev uint64)
 	return s.get(raw)
 }
 
+func (s *bucketImpl[T]) GetLatestRevision(ctx context.Context, key string) (Entry[T], error) {
+	watcher, err := s.bucket.Watch(ctx, s.prefixed(key))
+	if err != nil {
+		return nil, err
+	}
+	defer watcher.Stop()
+
+	entry := <-watcher.Updates()
+	if entry == nil {
+		return nil, jetstream.ErrKeyNotFound
+	}
+	return s.get(entry)
+}
+
 func (s *bucketImpl[T]) Put(ctx context.Context, entry PutEntry[T]) (uint64, error) {
 	b, err := encodeBucketEntryHeader(entry.Header(), entry.Value())
 	if err != nil {
@@ -126,6 +142,23 @@ type DeleteOption = jetstream.KVDeleteOpt
 
 func (s *bucketImpl[T]) Delete(ctx context.Context, key string, opts ...DeleteOption) error {
 	return s.bucket.Delete(ctx, s.prefixed(key), opts...)
+}
+
+type HistoryOption = jetstream.WatchOpt
+
+func (s *bucketImpl[T]) History(ctx context.Context, key string, opts ...HistoryOption) ([]Entry[T], error) {
+	rawEntries, err := s.bucket.History(ctx, s.prefixed(key), opts...)
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]Entry[T], len(rawEntries))
+	for i, raw := range rawEntries {
+		entries[i], err = s.get(raw)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return entries, nil
 }
 
 func (s *bucketImpl[T]) Watch(ctx context.Context, match string, opts ...WatcherOption) (Watcher[T], error) {
