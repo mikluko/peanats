@@ -16,9 +16,21 @@ var codecs = []Codec{
 	jsonMarshaler{},
 	yamlMarshaler{},
 	msgpackMarshaler{},
-	protojsonCodec{},
-	prototextCodec{},
-	protobinCodec{},
+	protojsonCodec{
+		unmarshaler: protojson.UnmarshalOptions{
+			DiscardUnknown: true,
+		},
+	},
+	prototextCodec{
+		unmarshaler: prototext.UnmarshalOptions{
+			DiscardUnknown: true,
+		},
+	},
+	protobinCodec{
+		unmarshaler: proto.UnmarshalOptions{
+			DiscardUnknown: true,
+		},
+	},
 }
 
 type Codec interface {
@@ -188,7 +200,9 @@ func (msgpackMarshaler) MatchContentType(header Header) bool {
 	return header.Get(HeaderContentType) == ContentTypeMsgpack.String()
 }
 
-type protobinCodec struct{}
+type protobinCodec struct {
+	unmarshaler proto.UnmarshalOptions
+}
 
 func (protobinCodec) Marshal(v any) ([]byte, error) {
 	if msg, ok := v.(proto.Message); ok {
@@ -197,9 +211,9 @@ func (protobinCodec) Marshal(v any) ([]byte, error) {
 	return nil, fmt.Errorf("%T is not a proto.Message", v)
 }
 
-func (protobinCodec) Unmarshal(data []byte, vPtr any) error {
+func (c protobinCodec) Unmarshal(data []byte, vPtr any) error {
 	if msg, ok := vPtr.(proto.Message); ok {
-		return proto.Unmarshal(data, msg)
+		return c.unmarshaler.Unmarshal(data, msg)
 	}
 	return fmt.Errorf("%T is not a proto.Message", vPtr)
 }
@@ -216,7 +230,9 @@ func (protobinCodec) MatchContentType(header Header) bool {
 	return header.Get(HeaderContentType) == ContentTypeProtobin.String()
 }
 
-type protojsonCodec struct{}
+type protojsonCodec struct {
+	unmarshaler protojson.UnmarshalOptions
+}
 
 func (protojsonCodec) Marshal(v any) ([]byte, error) {
 	if msg, ok := v.(proto.Message); ok {
@@ -225,9 +241,9 @@ func (protojsonCodec) Marshal(v any) ([]byte, error) {
 	return nil, fmt.Errorf("%T is not a proto.Message", v)
 }
 
-func (protojsonCodec) Unmarshal(data []byte, vPtr any) error {
+func (c protojsonCodec) Unmarshal(data []byte, vPtr any) error {
 	if msg, ok := vPtr.(proto.Message); ok {
-		return protojson.Unmarshal(data, msg)
+		return c.unmarshaler.Unmarshal(data, msg)
 	}
 	return fmt.Errorf("%T is not a proto.Message", vPtr)
 }
@@ -244,7 +260,9 @@ func (protojsonCodec) MatchContentType(header Header) bool {
 	return header.Get(HeaderContentType) == ContentTypeProtojson.String()
 }
 
-type prototextCodec struct{}
+type prototextCodec struct {
+	unmarshaler prototext.UnmarshalOptions
+}
 
 func (prototextCodec) Marshal(v any) ([]byte, error) {
 	if msg, ok := v.(proto.Message); ok {
@@ -253,9 +271,9 @@ func (prototextCodec) Marshal(v any) ([]byte, error) {
 	return nil, fmt.Errorf("%T is not a proto.Message", v)
 }
 
-func (prototextCodec) Unmarshal(data []byte, vPtr any) error {
+func (c prototextCodec) Unmarshal(data []byte, vPtr any) error {
 	if msg, ok := vPtr.(proto.Message); ok {
-		return prototext.Unmarshal(data, msg)
+		return c.unmarshaler.Unmarshal(data, msg)
 	}
 	return fmt.Errorf("%T is not a proto.Message", vPtr)
 }
