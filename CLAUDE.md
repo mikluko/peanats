@@ -6,6 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Peanats is a generic typed handlers framework for NATS messaging in Go. It provides type-parametrized interfaces for various messaging patterns including publisher/subscriber, producer/consumer, and request/reply patterns.
 
+## Branching
+
+- Use branch naming format: `<github-handle>/<branch-name>`
+- Example: `octocat/feature-name`, `octocat/bug-fix`
+
 ## Development Commands
 
 ### Testing
