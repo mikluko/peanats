@@ -131,6 +131,15 @@ Each package implements a specific messaging pattern with full type safety:
 - Test structure follows Go conventions with comprehensive coverage
 - Examples in /examples/ for pub/sub and client/server patterns
 
+#### Naming Convention Concerns
+
+- Multiple "Publisher" interfaces at different abstraction levels cause import conflicts
+- peanats.Publisher (low-level) vs publisher.Publisher (high-level) naming collision
+- Consumer vs Subscriber package distinction unclear from names alone
+- consumer/ = JetStream pull consumers, subscriber/ = core NATS subscriptions
+- Potential user confusion when choosing between packages and interfaces
+- Consider renaming strategies for future releases to improve clarity
+
 ### Changelog
 
 - 2025-05-26: Created initial CLAUDE.md with architecture overview and development commands
