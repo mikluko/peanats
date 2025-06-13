@@ -74,10 +74,7 @@ func (m *msgImpl) Subject() string {
 
 func (m *msgImpl) Header() Header {
 	if m.header == nil {
-		m.header = Header(m.Msg.Header)
-	}
-	if m.header == nil {
-		m.header = make(Header)
+		m.header = canonicalizeHeader(m.Msg.Header)
 	}
 	return m.header
 }
@@ -142,10 +139,19 @@ func (m *msgJetstreamImpl) InProgress(_ context.Context) error {
 
 func (m *msgJetstreamImpl) Header() Header {
 	if m.header == nil {
-		m.header = Header(m.Msg.Headers())
-	}
-	if m.header == nil {
-		m.header = make(Header)
+		m.header = canonicalizeHeader(m.Msg.Headers())
 	}
 	return m.header
+}
+
+// canonicalizeHeader converts a nats.Header to a Header with keys canonicalization.
+func canonicalizeHeader(h nats.Header) Header {
+	if h == nil {
+		return make(Header)
+	}
+	canonical := make(Header, len(h))
+	for k, v := range h {
+		canonical[textproto.CanonicalMIMEHeaderKey(k)] = v
+	}
+	return canonical
 }
