@@ -21,6 +21,13 @@ func PublisherWithTracer(tracer trace.Tracer) PublisherOption {
 	}
 }
 
+// PublisherWithSpanName sets the span name for traces created by the publisher
+func PublisherWithSpanName(name string) PublisherOption {
+	return func(pub *tracingPublisher) {
+		pub.spanName = name
+	}
+}
+
 // PublisherWithAttributes adds attributes to all spans created by the publisher
 func PublisherWithAttributes(attrs ...attribute.KeyValue) PublisherOption {
 	return func(pub *tracingPublisher) {
@@ -44,15 +51,17 @@ func PublisherWithLinks(links ...trace.Link) PublisherOption {
 
 type tracingPublisher struct {
 	publisher.Publisher
-	tracer trace.Tracer
-	opts   []trace.SpanStartOption
-	root   bool // indicates if a new root span should be created for each publish operation
+	tracer   trace.Tracer
+	spanName string
+	opts     []trace.SpanStartOption
+	root     bool // indicates if a new root span should be created for each publish operation
 }
 
 // NewPublisher creates a new trace-aware publisher that implements publisher.Publisher
 func NewPublisher(pub publisher.Publisher, opts ...PublisherOption) publisher.Publisher {
 	res := tracingPublisher{
 		Publisher: pub,
+		spanName:  "peanats.publish",
 	}
 	for _, opt := range opts {
 		opt(&res)
@@ -70,7 +79,7 @@ func (p *tracingPublisher) Publish(ctx context.Context, subject string, data any
 	if p.root {
 		spanOpts = append(spanOpts, trace.WithNewRoot(), trace.WithLinks(trace.LinkFromContext(ctx)))
 	}
-	ctx, span := p.tracer.Start(ctx, "publish", spanOpts...)
+	ctx, span := p.tracer.Start(ctx, p.spanName, spanOpts...)
 	defer span.End()
 
 	header := make(peanats.Header)

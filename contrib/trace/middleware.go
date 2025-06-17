@@ -23,6 +23,7 @@ type middlewareOptions struct {
 	spanAttributes []attribute.KeyValue
 	withHeaders    bool
 	withData       bool
+	truncateDataAt int
 }
 
 // MiddlewareWithTracer sets the tracer for the middleware
@@ -68,9 +69,10 @@ func MiddlewareWithHeaders(v bool) MiddlewareOption {
 }
 
 // MiddlewareWithData enables recording message data as span attributes
-func MiddlewareWithData(v bool) MiddlewareOption {
+func MiddlewareWithData(v bool, truncateAt int) MiddlewareOption {
 	return func(o *middlewareOptions) {
 		o.withData = v
+		o.truncateDataAt = truncateAt
 	}
 }
 
@@ -97,7 +99,16 @@ func Middleware(opts ...MiddlewareOption) peanats.MsgMiddleware {
 				}
 			}
 			if cfg.withData {
-				attrs = append(attrs, attribute.String("nats.data", string(msg.Data())))
+				dataFull := string(msg.Data())
+				dataTrunc := dataFull
+				if cfg.truncateDataAt > 0 && len(dataFull) > cfg.truncateDataAt {
+					dataTrunc = dataFull[:cfg.truncateDataAt]
+				}
+				attrs = append(attrs,
+					attribute.String("nats.data", dataTrunc),
+					attribute.Int("nats.data_length", len(dataFull)),
+					attribute.Bool("nats.data_truncated", len(dataFull) != len(dataTrunc)),
+				)
 			}
 			if metadatable, ok := msg.(peanats.Metadatable); ok {
 				if meta, err := metadatable.Metadata(); err == nil {
