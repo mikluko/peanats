@@ -28,9 +28,17 @@ func PublisherWithAttributes(attrs ...attribute.KeyValue) PublisherOption {
 	}
 }
 
+// PublisherWithNewRoot indicates that the publisher should start a new root span for each publish operation
 func PublisherWithNewRoot() PublisherOption {
 	return func(pub *tracingPublisher) {
-		pub.opts = append(pub.opts, trace.WithNewRoot())
+		pub.root = true
+	}
+}
+
+// PublisherWithLinks adds a links to the span created by the publisher
+func PublisherWithLinks(links ...trace.Link) PublisherOption {
+	return func(pub *tracingPublisher) {
+		pub.opts = append(pub.opts, trace.WithLinks(links...))
 	}
 }
 
@@ -38,6 +46,7 @@ type tracingPublisher struct {
 	publisher.Publisher
 	tracer trace.Tracer
 	opts   []trace.SpanStartOption
+	root   bool // indicates if a new root span should be created for each publish operation
 }
 
 // NewPublisher creates a new trace-aware publisher that implements publisher.Publisher
@@ -58,6 +67,9 @@ func (p *tracingPublisher) Publish(ctx context.Context, subject string, data any
 		trace.WithSpanKind(trace.SpanKindProducer),
 		trace.WithAttributes(attribute.String("nats.subject", subject)),
 	)
+	if p.root {
+		spanOpts = append(spanOpts, trace.WithNewRoot(), trace.WithLinks(trace.LinkFromContext(ctx)))
+	}
 	ctx, span := p.tracer.Start(ctx, "publish", spanOpts...)
 	defer span.End()
 
