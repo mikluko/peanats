@@ -19,9 +19,10 @@ type MiddlewareOption func(*middlewareOptions)
 type middlewareOptions struct {
 	tracer         trace.Tracer
 	spanKind       trace.SpanKind
-	attributes     []attribute.KeyValue
-	extractHeaders bool
-	recordData     bool
+	spanName       string
+	spanAttributes []attribute.KeyValue
+	withHeaders    bool
+	withData       bool
 }
 
 // MiddlewareWithTracer sets the tracer for the middleware
@@ -38,58 +39,65 @@ func MiddlewareWithSpanKind(kind trace.SpanKind) MiddlewareOption {
 	}
 }
 
+// MiddlewareWithSpanName sets the span name for traces
+func MiddlewareWithSpanName(name string) MiddlewareOption {
+	return func(o *middlewareOptions) {
+		o.spanName = name
+	}
+}
+
+// MiddlewareWithSpanAttributes adds attributes to the span created by the middleware
+func MiddlewareWithSpanAttributes(attrs ...attribute.KeyValue) MiddlewareOption {
+	return func(o *middlewareOptions) {
+		o.spanAttributes = append(o.spanAttributes, attrs...)
+	}
+}
+
 // MiddlewareWithAttributes adds attributes to all spans created by the middleware
 func MiddlewareWithAttributes(attrs ...attribute.KeyValue) MiddlewareOption {
 	return func(o *middlewareOptions) {
-		o.attributes = append(o.attributes, attrs...)
+		o.spanAttributes = append(o.spanAttributes, attrs...)
 	}
 }
 
 // MiddlewareWithHeaders enables trace context extraction from message headers
-func MiddlewareWithHeaders(extract bool) MiddlewareOption {
+func MiddlewareWithHeaders(v bool) MiddlewareOption {
 	return func(o *middlewareOptions) {
-		o.extractHeaders = extract
+		o.withHeaders = v
 	}
 }
 
-// MiddlewareWithPayload enables recording message data as span attributes
-func MiddlewareWithPayload(record bool) MiddlewareOption {
+// MiddlewareWithData enables recording message data as span attributes
+func MiddlewareWithData(v bool) MiddlewareOption {
 	return func(o *middlewareOptions) {
-		o.recordData = record
+		o.withData = v
 	}
 }
 
 // Middleware creates a NATS message middleware that handles OpenTelemetry trace propagation
 func Middleware(opts ...MiddlewareOption) peanats.MsgMiddleware {
-	options := &middlewareOptions{
-		tracer:         otel.Tracer("peanats"),
-		spanKind:       trace.SpanKindUnspecified,
-		extractHeaders: true,
-		recordData:     false,
+	cfg := &middlewareOptions{
+		tracer:   otel.Tracer("peanats"),
+		spanName: "peanats.handle",
 	}
 	for _, opt := range opts {
-		opt(options)
+		opt(cfg)
 	}
-
 	return func(next peanats.MsgHandler) peanats.MsgHandler {
 		return peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
-			propagator := otel.GetTextMapPropagator()
-			ctx = propagator.Extract(ctx, propagation.HeaderCarrier(msg.Header()))
-
-			checkSpan := trace.SpanFromContext(ctx)
-			_ = checkSpan // Ensure span is initialized
-
-			attrs := append(options.attributes,
+			attrs := append(cfg.spanAttributes,
 				attribute.String("nats.subject", msg.Subject()),
 			)
-			for name, values := range msg.Header() {
-				name = textproto.CanonicalMIMEHeaderKey(name)
-				for _, v := range values {
-					attrs = append(attrs, attribute.String(fmt.Sprintf("nats.header.%s", name), v))
+			if cfg.withHeaders {
+				for name, values := range msg.Header() {
+					name = textproto.CanonicalMIMEHeaderKey(name)
+					for _, v := range values {
+						attrs = append(attrs, attribute.String(fmt.Sprintf("nats.header.%s", name), v))
+					}
 				}
 			}
-			if options.recordData {
-				attrs = append(attrs, attribute.String("nats.payload", string(msg.Data())))
+			if cfg.withData {
+				attrs = append(attrs, attribute.String("nats.data", string(msg.Data())))
 			}
 			if metadatable, ok := msg.(peanats.Metadatable); ok {
 				if meta, err := metadatable.Metadata(); err == nil {
@@ -104,12 +112,14 @@ func Middleware(opts ...MiddlewareOption) peanats.MsgMiddleware {
 					)
 				}
 			}
-			ctx, span := options.tracer.Start(ctx, "receive",
-				trace.WithSpanKind(options.spanKind),
+			propagator := otel.GetTextMapPropagator()
+			ctxPropagator := propagator.Extract(ctx, propagation.HeaderCarrier(msg.Header()))
+			ctxSpan, span := cfg.tracer.Start(ctxPropagator, cfg.spanName,
+				trace.WithSpanKind(cfg.spanKind),
 				trace.WithAttributes(attrs...),
 			)
 			defer span.End()
-			err := next.HandleMsg(ctx, msg)
+			err := next.HandleMsg(ctxSpan, msg)
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
