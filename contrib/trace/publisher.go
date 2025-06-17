@@ -12,66 +12,59 @@ import (
 )
 
 // PublisherOption configures a trace-aware publisher
-type PublisherOption func(*publisherOptions)
-
-type publisherOptions struct {
-	tracer     trace.Tracer
-	attributes []attribute.KeyValue
-}
+type PublisherOption func(*tracingPublisher)
 
 // PublisherWithTracer sets the tracer for the publisher
 func PublisherWithTracer(tracer trace.Tracer) PublisherOption {
-	return func(o *publisherOptions) {
-		o.tracer = tracer
+	return func(pub *tracingPublisher) {
+		pub.tracer = tracer
 	}
 }
 
 // PublisherWithAttributes adds attributes to all spans created by the publisher
 func PublisherWithAttributes(attrs ...attribute.KeyValue) PublisherOption {
-	return func(o *publisherOptions) {
-		o.attributes = append(o.attributes, attrs...)
+	return func(pub *tracingPublisher) {
+		pub.opts = append(pub.opts, trace.WithAttributes(attrs...))
+	}
+}
+
+func PublisherWithNewRoot() PublisherOption {
+	return func(pub *tracingPublisher) {
+		pub.opts = append(pub.opts, trace.WithNewRoot())
 	}
 }
 
 type tracingPublisher struct {
 	publisher.Publisher
-	tracer     trace.Tracer
-	attributes []attribute.KeyValue
+	tracer trace.Tracer
+	opts   []trace.SpanStartOption
 }
 
 // NewPublisher creates a new trace-aware publisher that implements publisher.Publisher
 func NewPublisher(pub publisher.Publisher, opts ...PublisherOption) publisher.Publisher {
-	options := &publisherOptions{
-		tracer: otel.Tracer("peanats"),
+	res := tracingPublisher{
+		Publisher: pub,
 	}
 	for _, opt := range opts {
-		opt(options)
+		opt(&res)
 	}
-	return &tracingPublisher{
-		Publisher:  pub,
-		tracer:     options.tracer,
-		attributes: options.attributes,
-	}
+	return &res
 }
 
 // Publish publishes a message with trace context propagation
 func (p *tracingPublisher) Publish(ctx context.Context, subject string, data any, opts ...publisher.PublishOption) error {
 	// Start a new span for the publish operation
-	attrs := append(p.attributes,
-		attribute.String("nats.subject", subject),
-	)
-	ctx, span := p.tracer.Start(ctx, "publish",
+	spanOpts := append(p.opts,
 		trace.WithSpanKind(trace.SpanKindProducer),
-		trace.WithAttributes(attrs...),
+		trace.WithAttributes(attribute.String("nats.subject", subject)),
 	)
+	ctx, span := p.tracer.Start(ctx, "publish", spanOpts...)
 	defer span.End()
 
 	header := make(peanats.Header)
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(header))
 
-	opts = append(opts, publisher.WithHeader(header))
-
-	err := p.Publisher.Publish(ctx, subject, data, opts...)
+	err := p.Publisher.Publish(ctx, subject, data, append(opts, publisher.WithHeader(header))...)
 	if err != nil {
 		span.RecordError(err)
 		return err
