@@ -1,11 +1,7 @@
-resolve-type-alias:     false
-issue-845-fix:          true
-disable-version-string: true
-with-expecter:          true
-dir:                    "{{.ConfigDir}}/internal/xmock/{{.PackageName}}mock"
-outpkg:                 "{{.PackageName}}mock"
-mockname:               "{{.InterfaceName|camelcase}}"
-filename:               "{{.InterfaceName|lower}}.go"
+dir: "{{.ConfigDir}}/internal/xmock/{{.SrcPackageName}}mock"
+filename: "{{.InterfaceName|lower}}.go"
+pkgname: "{{.SrcPackageName}}mock"
+structname: "{{.InterfaceName}}"
 packages:
   github.com/nats-io/nats.go/jetstream:
     interfaces:
@@ -22,3 +18,8 @@ packages:
     interfaces:
       Entry:
       Watcher:
+  github.com/mikluko/peanats/requester:
+    interfaces:
+      Requester:
+      Response:
+      ResponseReceiver:
