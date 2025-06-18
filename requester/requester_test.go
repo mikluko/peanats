@@ -1,4 +1,4 @@
-package requester_test
+package requester
 
 import (
 	"context"
@@ -14,11 +14,10 @@ import (
 	"github.com/mikluko/peanats/contrib/pond"
 	"github.com/mikluko/peanats/internal/xmock/peanatsmock"
 	"github.com/mikluko/peanats/internal/xtestutil"
-	"github.com/mikluko/peanats/requester"
 	"github.com/mikluko/peanats/subscriber"
 )
 
-func TestClientImpl_Request(t *testing.T) {
+func TestRequester_Request(t *testing.T) {
 	type request struct {
 		Foo string `json:"foo"`
 	}
@@ -37,7 +36,7 @@ func TestClientImpl_Request(t *testing.T) {
 				assert.JSONEq(t, `{"foo": "a dog"}`, string(msg.Data()))
 			}).
 			Return(msg, nil).Once()
-		c := requester.New[request, response](nc)
+		c := New[request, response](nc)
 		rs, err := c.Request(context.Background(), "parson.had", &request{Foo: "a dog"})
 		require.NoError(t, err)
 		require.NotNil(t, rs)
@@ -51,7 +50,7 @@ func TestClientImpl_Request(t *testing.T) {
 		nc.EXPECT().
 			Request(mock.Anything, mock.Anything).
 			Return(msg, nil).Once()
-		c := requester.New[request, response](nc)
+		c := New[request, response](nc)
 		rs, err := c.Request(context.Background(), "parson.had", &request{Foo: "a dog"})
 		require.Error(t, err)
 		require.Nil(t, rs)
@@ -62,7 +61,7 @@ func TestClientImpl_Request(t *testing.T) {
 		nc.EXPECT().
 			Request(mock.Anything, mock.Anything).
 			Return(nil, testErr).Once()
-		c := requester.New[request, response](nc)
+		c := New[request, response](nc)
 		rs, err := c.Request(context.Background(), "parson.had", &request{Foo: "a dog"})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, testErr)
@@ -70,7 +69,7 @@ func TestClientImpl_Request(t *testing.T) {
 	})
 }
 
-func BenchmarkClientImpl_Request(b *testing.B) {
+func BenchmarkRequester_Request(b *testing.B) {
 	type request struct {
 		Foo string `json:"foo"`
 	}
@@ -91,7 +90,7 @@ func BenchmarkClientImpl_Request(b *testing.B) {
 	}
 	defer sub.Unsubscribe()
 
-	c := requester.New[request, response](nc)
+	c := New[request, response](nc)
 	b.ResetTimer()
 	b.ReportAllocs()
 
@@ -103,7 +102,7 @@ func BenchmarkClientImpl_Request(b *testing.B) {
 	}
 }
 
-func BenchmarkClientImpl_ResponseReceiver(b *testing.B) {
+func BenchmarkRequester_ResponseReceiver(b *testing.B) {
 	type request struct {
 		N int `json:"n"`
 	}
@@ -136,13 +135,13 @@ func BenchmarkClientImpl_ResponseReceiver(b *testing.B) {
 	}
 	defer sub.Unsubscribe()
 
-	c := requester.New[request, response](nc)
+	c := New[request, response](nc)
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
 		n := i % 10
-		rcv, err := c.ResponseReceiver(b.Context(), "baz.qux", &request{N: n}, requester.ResponseReceiverBuffer(10))
+		rcv, err := c.ResponseReceiver(b.Context(), "baz.qux", &request{N: n}, ResponseReceiverBuffer(10))
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -153,11 +152,89 @@ func BenchmarkClientImpl_ResponseReceiver(b *testing.B) {
 			}
 		}
 		_, err = rcv.Next(b.Context())
-		if !errors.Is(err, requester.ErrOver) {
+		if !errors.Is(err, ErrOver) {
 			b.Fatal(err)
 		}
 		if !errors.Is(err, io.EOF) {
 			b.Fatal(err)
 		}
 	}
+}
+
+func TestRequestHeader_Merging(t *testing.T) {
+	t.Run("merging", func(t *testing.T) {
+		// Test that RequestHeader merges headers instead of replacing them
+
+		// Start with default params (includes Content-Type: application/json)
+		params := makeRequestParams()
+
+		// Verify default Content-Type is set
+		assert.Equal(t, []string{peanats.ContentTypeJson.String()}, params.header[peanats.HeaderContentType])
+
+		// Add custom headers using RequestHeader
+		customHeader := make(peanats.Header)
+		customHeader.Set("Authorization", "Bearer token123")
+		customHeader.Set("X-Custom", "value1")
+
+		RequestHeader(customHeader)(&params)
+
+		// Verify both default and custom headers are present
+		assert.Equal(t, []string{peanats.ContentTypeJson.String()}, params.header[peanats.HeaderContentType])
+		assert.Equal(t, []string{"Bearer token123"}, params.header["Authorization"])
+		assert.Equal(t, []string{"value1"}, params.header["X-Custom"])
+
+		// Add more headers to the same key
+		moreHeaders := make(peanats.Header)
+		moreHeaders.Add("X-Custom", "value2")
+		moreHeaders.Set("X-Another", "another")
+
+		RequestHeader(moreHeaders)(&params)
+
+		// Verify headers are merged/appended
+		assert.Equal(t, []string{peanats.ContentTypeJson.String()}, params.header[peanats.HeaderContentType])
+		assert.Equal(t, []string{"Bearer token123"}, params.header["Authorization"])
+		assert.Equal(t, []string{"value1", "value2"}, params.header["X-Custom"]) // Both values present
+		assert.Equal(t, []string{"another"}, params.header["X-Another"])
+	})
+	t.Run("multiple options", func(t *testing.T) {
+		// Test using multiple RequestHeader options in sequence
+
+		header1 := make(peanats.Header)
+		header1.Set("X-First", "first")
+
+		header2 := make(peanats.Header)
+		header2.Set("X-Second", "second")
+
+		header3 := make(peanats.Header)
+		header3.Set("X-First", "first-updated") // Same key, should append
+
+		params := makeRequestParams(
+			RequestHeader(header1),
+			RequestHeader(header2),
+			RequestHeader(header3),
+		)
+
+		// Verify all headers are present
+		assert.Equal(t, []string{peanats.ContentTypeJson.String()}, params.header[peanats.HeaderContentType])
+		assert.Equal(t, []string{"first", "first-updated"}, params.header["X-First"])
+		assert.Equal(t, []string{"second"}, params.header["X-Second"])
+	})
+	t.Run("override", func(t *testing.T) {
+		params := makeRequestParams(
+			RequestContentType(peanats.ContentTypeYaml),
+		)
+		assert.Equal(t, []string{peanats.ContentTypeYaml.String()}, params.header[peanats.HeaderContentType])
+	})
+	t.Run("with content type", func(t *testing.T) {
+		customHeader := make(peanats.Header)
+		customHeader.Set("Authorization", "Bearer token123")
+
+		params := makeRequestParams(
+			RequestHeader(customHeader),
+			RequestContentType(peanats.ContentTypeYaml), // This should override default JSON
+		)
+
+		assert.Equal(t, []string{peanats.ContentTypeYaml.String()}, params.header[peanats.HeaderContentType])
+		assert.Equal(t, []string{"Bearer token123"}, params.header["Authorization"])
+	})
 }

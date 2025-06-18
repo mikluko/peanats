@@ -168,6 +168,14 @@ Each package implements a specific messaging pattern with full type safety:
 - Added .Once() to mock expectations to ensure proper call sequencing
 - Made Header() calls optional with .Maybe() to handle conditional execution paths
 
+#### Requester Header Management Fix
+
+- Fixed critical bug in RequestHeader function that was replacing headers instead of merging
+- RequestHeader now properly merges headers using Header.Add() to preserve existing headers
+- Tracing requester no longer strips Content-Type and other existing headers
+- Added comprehensive test coverage for header merging behavior
+- Fixed tracing integration to properly preserve user-provided headers
+
 ### Changelog
 
 - 2025-05-26: Created initial CLAUDE.md with architecture overview and development commands
@@ -175,3 +183,4 @@ Each package implements a specific messaging pattern with full type safety:
 - 2025-06-18: Added complete tracing requester implementation with comprehensive tests
 - 2025-06-18: Added comprehensive middleware ordering tests to verify reversed execution order
 - 2025-06-18: Fixed trace package test failures with proper mock expectations and context handling
+- 2025-06-18: Fixed critical RequestHeader bug that stripped existing headers instead of merging

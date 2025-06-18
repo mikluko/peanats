@@ -28,11 +28,15 @@ func makeRequestParams(opts ...RequestOption) requestParams {
 	return p
 }
 
-// RequestHeader sets the header for the message. It can be used multiple times, but each time it will
-// overwrite the previous value completely.
+// RequestHeader merges the provided headers with existing headers for the message.
+// If the same header key exists, the new values are appended to the existing ones.
 func RequestHeader(header peanats.Header) RequestOption {
 	return func(p *requestParams) {
-		p.header = header
+		for key, values := range header {
+			for _, value := range values {
+				p.header.Add(key, value)
+			}
+		}
 	}
 }
 
