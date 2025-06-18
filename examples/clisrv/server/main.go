@@ -10,7 +10,6 @@ import (
 
 	"github.com/mikluko/peanats"
 	"github.com/mikluko/peanats/contrib/logging"
-	slogcontrib "github.com/mikluko/peanats/contrib/slog"
 	"github.com/mikluko/peanats/subscriber"
 )
 
@@ -35,7 +34,7 @@ func main() {
 
 	h := peanats.ChainMsgMiddleware(
 		peanats.MsgHandlerFromArgHandler[request](&handler{}),
-		logging.AccessLogMiddleware(logging.AccessLogMiddlewareLogger(slogcontrib.Logger(slog.Default(), slog.LevelInfo))),
+		logging.AccessLogMiddleware(logging.SlogLogger(slog.Default(), slog.LevelInfo)),
 	)
 	ch, err := subscriber.SubscribeChan(ctx, h)
 	if err != nil {

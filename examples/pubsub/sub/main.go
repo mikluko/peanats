@@ -4,12 +4,10 @@ import (
 	"context"
 	"log/slog"
 	"os"
-
 	"os/signal"
 
 	"github.com/mikluko/peanats"
 	"github.com/mikluko/peanats/contrib/logging"
-	slogcontrib "github.com/mikluko/peanats/contrib/slog"
 	"github.com/mikluko/peanats/subscriber"
 
 	"github.com/nats-io/nats.go"
@@ -27,7 +25,7 @@ func main() {
 
 	h := peanats.ChainMsgMiddleware(
 		peanats.MsgHandlerFromArgHandler(peanats.ArgHandlerFunc[model](handleModel)),
-		logging.AccessLogMiddleware(logging.AccessLogMiddlewareLogger(slogcontrib.Logger(slog.Default(), slog.LevelInfo))),
+		logging.AccessLogMiddleware(logging.SlogLogger(slog.Default(), slog.LevelInfo)),
 	)
 	ch, err := subscriber.SubscribeChan(ctx, h)
 	if err != nil {
