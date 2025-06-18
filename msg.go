@@ -53,7 +53,7 @@ func (f MsgHandlerFunc) HandleMsg(ctx context.Context, m Msg) error {
 type MsgMiddleware func(MsgHandler) MsgHandler
 
 func ChainMsgMiddleware(h MsgHandler, mw ...MsgMiddleware) MsgHandler {
-	for i := len(mw) - 1; i >= 0; i-- {
+	for i := range mw {
 		h = mw[i](h)
 	}
 	return h
