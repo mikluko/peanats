@@ -140,7 +140,18 @@ Each package implements a specific messaging pattern with full type safety:
 - Potential user confusion when choosing between packages and interfaces
 - Consider renaming strategies for future releases to improve clarity
 
+#### Tracing Requester Implementation
+
+- Complete tracing wrapper for requester.Requester interface
+- Supports both single Request calls and streaming ResponseReceiver operations  
+- Automatic trace context injection into request headers via OpenTelemetry propagation
+- Proper span lifecycle management for streaming operations
+- Error handling with span status and error recording
+- Configurable span names, attributes, and tracers
+- Full test coverage with mocked dependencies
+
 ### Changelog
 
 - 2025-05-26: Created initial CLAUDE.md with architecture overview and development commands
 - 2025-05-26: Adopted note taking practice with Notes and Changelog sections
+- 2025-06-18: Added complete tracing requester implementation with comprehensive tests
