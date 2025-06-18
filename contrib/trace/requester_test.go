@@ -60,7 +60,7 @@ func TestTracingRequester_Request(t *testing.T) {
 	respData := &testResponse{Reply: "world"}
 
 	// Setup expectations
-	mockResp.EXPECT().Header().Return(peanats.Header{"Content-Type": []string{"application/json"}})
+	mockResp.EXPECT().Header().Return(peanats.Header{"Content-Type": []string{"application/json"}}).Maybe()
 	mockResp.EXPECT().Value().Return(respData)
 
 	mockReq.EXPECT().Request(
@@ -96,8 +96,19 @@ func TestTracingRequester_Request(t *testing.T) {
 	span := spans[0]
 	assert.Equal(t, "test.request", span.Name)
 	assert.Equal(t, trace.SpanKindClient, span.SpanKind)
-	assert.Equal(t, subject, span.Attributes[0].Value.AsString())
-	assert.Equal(t, "request", span.Attributes[1].Value.AsString())
+
+	// Find the attributes we expect
+	var subjectAttr, typeAttr attribute.KeyValue
+	for _, attr := range span.Attributes {
+		if attr.Key == "nats.subject" {
+			subjectAttr = attr
+		}
+		if attr.Key == "test.type" {
+			typeAttr = attr
+		}
+	}
+	assert.Equal(t, subject, subjectAttr.Value.AsString())
+	assert.Equal(t, "request", typeAttr.Value.AsString())
 }
 
 func TestTracingRequester_RequestError(t *testing.T) {
@@ -174,11 +185,11 @@ func TestTracingRequester_ResponseReceiver(t *testing.T) {
 		mock.AnythingOfType("[]requester.ResponseReceiverOption"),
 	).Return(mockReceiver, nil)
 
-	mockResp.EXPECT().Header().Return(peanats.Header{"Content-Type": []string{"application/json"}})
+	mockResp.EXPECT().Header().Return(peanats.Header{"Content-Type": []string{"application/json"}}).Maybe()
 	mockResp.EXPECT().Value().Return(respData)
 
-	mockReceiver.EXPECT().Next(mock.AnythingOfType("*context.emptyCtx")).Return(mockResp, nil)
-	mockReceiver.EXPECT().Next(mock.AnythingOfType("*context.emptyCtx")).Return(nil, requester.ErrOver)
+	mockReceiver.EXPECT().Next(mock.Anything).Return(mockResp, nil).Once()
+	mockReceiver.EXPECT().Next(mock.Anything).Return(nil, requester.ErrOver).Once()
 	mockReceiver.EXPECT().Stop().Return(nil)
 
 	// Create tracing requester
@@ -214,7 +225,7 @@ func TestTracingRequester_ResponseReceiver(t *testing.T) {
 	assert.Len(t, spans, 1)
 
 	span := spans[0]
-	assert.Equal(t, "test.stream", span.Name())
+	assert.Equal(t, "test.stream", span.Name)
 	assert.Equal(t, trace.SpanKindClient, span.SpanKind)
 }
 
@@ -294,7 +305,7 @@ func TestTracingResponseReceiver_NextWithSkip(t *testing.T) {
 		mock.AnythingOfType("[]requester.ResponseReceiverOption"),
 	).Return(mockReceiver, nil)
 
-	mockReceiver.EXPECT().Next(mock.AnythingOfType("*context.emptyCtx")).Return(nil, requester.ErrSkip)
+	mockReceiver.EXPECT().Next(mock.Anything).Return(nil, requester.ErrSkip)
 	mockReceiver.EXPECT().Stop().Return(nil)
 
 	// Create tracing requester

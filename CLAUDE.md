@@ -127,6 +127,8 @@ Each package implements a specific messaging pattern with full type safety:
 
 - Standard Go toolchain with go test, go build commands
 - Mockery for mock generation (configured in .mockery.yaml)
+- Always use mockery for generating mocks when testing interfaces
+- Extend .mockery.yaml config as needed for new interfaces requiring mocks
 - No custom build scripts or CI/CD detected
 - Test structure follows Go conventions with comprehensive coverage
 - Examples in /examples/ for pub/sub and client/server patterns
@@ -150,8 +152,26 @@ Each package implements a specific messaging pattern with full type safety:
 - Configurable span names, attributes, and tracers
 - Full test coverage with mocked dependencies
 
+#### Middleware Ordering and Testing
+
+- ChainMsgMiddleware function applies middlewares in forward iteration order (i := range mw)
+- This creates reversed execution order where last middleware in slice executes first (outermost)
+- Visual middleware list order: bottom middleware becomes outermost wrapper
+- Comprehensive test coverage in msg_test.go verifies execution order
+- Tests use mockery-generated mocks with .Maybe() for optional method calls
+- Package naming pattern: peanats_test to avoid import cycles with internal mocks
+
+#### Trace Package Test Fixes
+
+- Fixed span attribute assertions to search by key instead of assuming order
+- Resolved context type mismatch issues by using mock.Anything instead of specific context types
+- Added .Once() to mock expectations to ensure proper call sequencing
+- Made Header() calls optional with .Maybe() to handle conditional execution paths
+
 ### Changelog
 
 - 2025-05-26: Created initial CLAUDE.md with architecture overview and development commands
 - 2025-05-26: Adopted note taking practice with Notes and Changelog sections
 - 2025-06-18: Added complete tracing requester implementation with comprehensive tests
+- 2025-06-18: Added comprehensive middleware ordering tests to verify reversed execution order
+- 2025-06-18: Fixed trace package test failures with proper mock expectations and context handling
