@@ -96,6 +96,9 @@ func (c *clientImpl[RQ, RS]) ResponseReceiver(ctx context.Context, subj string, 
 	// message is ready, prepare response sequence subscription
 	buf := make(chan peanats.Msg, rcvParams.buffer)
 	sub, err := c.nc.SubscribeChan(ctx, msg.Reply(), buf)
+	if err != nil {
+		return nil, err
+	}
 
 	// send the request
 	err = c.nc.Publish(ctx, msg)

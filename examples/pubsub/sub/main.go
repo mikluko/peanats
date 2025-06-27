@@ -33,6 +33,9 @@ func main() {
 	}
 
 	sub, err := nc.SubscribeChan(ctx, "peanuts.examples.pubsub", ch)
+	if err != nil {
+		panic(err)
+	}
 	defer sub.Unsubscribe()
 
 	<-ctx.Done()

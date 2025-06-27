@@ -1,5 +1,13 @@
 # Peanats
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/mikluko/peanats.svg)](https://pkg.go.dev/github.com/mikluko/peanats)
+[![Go Report Card](https://goreportcard.com/badge/github.com/mikluko/peanats)](https://goreportcard.com/report/github.com/mikluko/peanats)
+[![GitHub License](https://img.shields.io/github/license/mikluko/peanats)](https://github.com/mikluko/peanats/blob/main/LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/tag/mikluko/peanats?label=release)](https://github.com/mikluko/peanats/tags)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/mikluko/peanats)](https://github.com/mikluko/peanats/blob/main/go.mod)
+[![GitHub Issues](https://img.shields.io/github/issues/mikluko/peanats)](https://github.com/mikluko/peanats/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/mikluko/peanats)](https://github.com/mikluko/peanats/stargazers)
+
 A generic typed handlers framework for NATS messaging in Go.
 
 ## Features

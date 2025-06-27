@@ -44,7 +44,7 @@ func main() {
 	pub := publisher.New(nc)
 	seq := uint(0)
 
-	for _ = range time.Tick(1 * time.Second) {
+	for range time.Tick(1 * time.Second) {
 		seq++
 		msg := message{subject: "peanuts.examples.pubsub", Seq: seq, Msg: "parson had a dog"}
 		err = pub.Publish(ctx, "peanuts.examples.pubsub", msg)
