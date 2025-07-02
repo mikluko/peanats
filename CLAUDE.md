@@ -113,6 +113,14 @@ Each package implements a specific messaging pattern with full type safety:
 
 ### Notes
 
+#### Prometheus Middleware Metadatable Interface Fix
+
+- Fixed prometheus middleware wrapper losing Metadatable interface from wrapped messages
+- ackableWrapper now implements Metadata() method that delegates to underlying message
+- Prevents type assertion failures in trace middleware when JetStream messages are wrapped
+- Issue occurred because JetStream messages implement both Ackable and Metadatable
+- Prometheus wrapper only preserved Ackable, causing downstream middleware to fail
+
 #### Initial Architecture Analysis
 
 - Generic typed handlers framework for NATS messaging in Go
@@ -177,6 +185,8 @@ Each package implements a specific messaging pattern with full type safety:
 - Fixed tracing integration to properly preserve user-provided headers
 
 ### Changelog
+
+- 2025-07-02: Fixed prometheus middleware to preserve Metadatable interface when wrapping messages
 
 - 2025-05-26: Created initial CLAUDE.md with architecture overview and development commands
 - 2025-05-26: Adopted note taking practice with Notes and Changelog sections

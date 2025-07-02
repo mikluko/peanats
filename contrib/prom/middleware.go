@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mikluko/peanats"
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -158,4 +159,14 @@ func (a *ackableWrapper) InProgress(ctx context.Context) error {
 	err := a.Msg.(peanats.Ackable).InProgress(ctx)
 	a.counter.WithLabelValues(a.Subject(), "in_progress").Inc()
 	return err
+}
+
+// Metadata implements Metadatable interface if the underlying message supports it and panics
+// otherwise. In practice, messages implementing Ackable always implement Metadatable as well.
+func (a *ackableWrapper) Metadata() (*jetstream.MsgMetadata, error) {
+	if m, ok := a.Msg.(peanats.Metadatable); ok {
+		return m.Metadata()
+	} else {
+		panic("ackableWrapper: underlying message does not implement Metadatable interface")
+	}
 }

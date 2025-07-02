@@ -8,6 +8,7 @@ import (
 
 	"github.com/mikluko/peanats"
 	"github.com/mikluko/peanats/internal/xmock/peanatsmock"
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -374,4 +375,68 @@ func TestPrometheusMiddleware_CustomNamespaceSubsystem(t *testing.T) {
 	for name, found := range expectedNames {
 		assert.True(t, found, "Expected metric %s to be registered", name)
 	}
+}
+
+func TestPrometheusMiddleware_MetadatablePassthrough(t *testing.T) {
+	// Create a new registry for this test
+	registry := prometheus.NewRegistry()
+
+	// Create a JetStream message mock that implements both Ackable and Metadatable
+	mockMsg := peanatsmock.NewMsgJetstream(t)
+	mockMsg.EXPECT().Subject().Return("test.subject").Maybe()
+	mockMsg.EXPECT().Data().Return([]byte("test data")).Maybe()
+	mockMsg.EXPECT().Header().Return(peanats.Header{}).Maybe()
+	
+	// Set up mock metadata
+	expectedMetadata := &jetstream.MsgMetadata{
+		Sequence: jetstream.SequencePair{
+			Stream:   42,
+			Consumer: 10,
+		},
+		NumDelivered: 1,
+		NumPending:   5,
+		Stream:       "test-stream",
+		Consumer:     "test-consumer", 
+		Domain:       "test-domain",
+	}
+	mockMsg.EXPECT().Metadata().Return(expectedMetadata, nil).Once()
+
+	// Create middleware with custom registry
+	middleware := Middleware(middlewareRegisterer(registry))
+
+	// Create a handler that verifies Metadatable interface works through the wrapper
+	handler := peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
+		// Verify the message still implements Ackable after wrapping
+		ackable, isAckable := msg.(peanats.Ackable)
+		assert.True(t, isAckable, "Wrapped message should still implement Ackable")
+		assert.NotNil(t, ackable, "Ackable interface should not be nil")
+
+		// Verify the message implements Metadatable after wrapping
+		metadatable, isMetadatable := msg.(peanats.Metadatable)
+		assert.True(t, isMetadatable, "Wrapped message should implement Metadatable")
+		assert.NotNil(t, metadatable, "Metadatable interface should not be nil")
+
+		// Verify we can call Metadata() and get the expected result
+		metadata, err := metadatable.Metadata()
+		assert.NoError(t, err, "Metadata() should not return error")
+		assert.Equal(t, expectedMetadata, metadata, "Metadata should match expected values")
+
+		return nil
+	})
+
+	// Wrap handler with middleware
+	wrappedHandler := middleware(handler)
+
+	// Execute handler
+	err := wrappedHandler.HandleMsg(context.Background(), mockMsg)
+	require.NoError(t, err)
+
+	// Verify processing metrics are recorded
+	expected := `
+# HELP peanats_processed_total Total number of messages processed
+# TYPE peanats_processed_total counter
+peanats_processed_total{status="success",subject="test.subject"} 1
+`
+	compareErr := testutil.GatherAndCompare(registry, strings.NewReader(expected), "peanats_processed_total")
+	assert.NoError(t, compareErr, "Processed counter should be incremented")
 }
