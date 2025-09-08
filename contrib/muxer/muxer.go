@@ -85,7 +85,7 @@ func (r *routeImpl) Match(subj string) bool {
 
 var (
 	ErrNotFound     = fmt.Errorf("no route found")
-	NotFoundHandler = peanats.MsgHandlerFunc(func(_ context.Context, _ peanats.Msg) error {
-		return ErrNotFound
+	NotFoundHandler = peanats.MsgHandlerFunc(func(_ context.Context, m peanats.Msg) error {
+		return fmt.Errorf("%w: %s", ErrNotFound, m.Subject())
 	})
 )
