@@ -3,6 +3,7 @@ package peanats
 import (
 	"context"
 	"net/textproto"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -29,6 +30,7 @@ type Respondable interface {
 type Ackable interface {
 	Ack(context.Context) error
 	Nak(context.Context) error
+	NackWithDelay(context.Context, time.Duration) error
 	Term(context.Context) error
 	TermWithReason(context.Context, string) error
 	InProgress(context.Context) error
@@ -123,6 +125,10 @@ func (m *msgJetstreamImpl) Ack(_ context.Context) error {
 
 func (m *msgJetstreamImpl) Nak(_ context.Context) error {
 	return m.Msg.Nak()
+}
+
+func (m *msgJetstreamImpl) NackWithDelay(_ context.Context, d time.Duration) error {
+	return m.Msg.NakWithDelay(d)
 }
 
 func (m *msgJetstreamImpl) Term(_ context.Context) error {

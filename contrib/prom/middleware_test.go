@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mikluko/peanats"
 	"github.com/mikluko/peanats/internal/xmock/peanatsmock"
@@ -92,6 +93,20 @@ func TestPrometheusMiddleware_AckCounting(t *testing.T) {
 				return ackable.InProgress(ctx)
 			},
 			expectedAckType: "in_progress",
+			expectError:     false,
+		},
+		{
+			name: "NackWithDelay operation increments nak counter",
+			setupMock: func(mock *peanatsmock.MsgJetstream) {
+				mock.EXPECT().Subject().Return("test.subject").Maybe()
+				mock.EXPECT().Data().Return([]byte("test data")).Maybe()
+				mock.EXPECT().Header().Return(peanats.Header{}).Maybe()
+				mock.EXPECT().NackWithDelay(context.Background(), 5*time.Second).Return(nil).Once()
+			},
+			ackOperation: func(ctx context.Context, ackable peanats.Ackable) error {
+				return ackable.NackWithDelay(ctx, 5*time.Second)
+			},
+			expectedAckType: "nak",
 			expectError:     false,
 		},
 		{
@@ -386,7 +401,7 @@ func TestPrometheusMiddleware_MetadatablePassthrough(t *testing.T) {
 	mockMsg.EXPECT().Subject().Return("test.subject").Maybe()
 	mockMsg.EXPECT().Data().Return([]byte("test data")).Maybe()
 	mockMsg.EXPECT().Header().Return(peanats.Header{}).Maybe()
-	
+
 	// Set up mock metadata
 	expectedMetadata := &jetstream.MsgMetadata{
 		Sequence: jetstream.SequencePair{
@@ -396,7 +411,7 @@ func TestPrometheusMiddleware_MetadatablePassthrough(t *testing.T) {
 		NumDelivered: 1,
 		NumPending:   5,
 		Stream:       "test-stream",
-		Consumer:     "test-consumer", 
+		Consumer:     "test-consumer",
 		Domain:       "test-domain",
 	}
 	mockMsg.EXPECT().Metadata().Return(expectedMetadata, nil).Once()

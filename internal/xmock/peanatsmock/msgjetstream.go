@@ -6,6 +6,7 @@ package peanatsmock
 
 import (
 	"context"
+	"time"
 
 	"github.com/mikluko/peanats"
 	"github.com/nats-io/nats.go/jetstream"
@@ -284,6 +285,63 @@ func (_c *MsgJetstream_Metadata_Call) Return(msgMetadata *jetstream.MsgMetadata,
 }
 
 func (_c *MsgJetstream_Metadata_Call) RunAndReturn(run func() (*jetstream.MsgMetadata, error)) *MsgJetstream_Metadata_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// NackWithDelay provides a mock function for the type MsgJetstream
+func (_mock *MsgJetstream) NackWithDelay(context1 context.Context, duration time.Duration) error {
+	ret := _mock.Called(context1, duration)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NackWithDelay")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Duration) error); ok {
+		r0 = returnFunc(context1, duration)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MsgJetstream_NackWithDelay_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NackWithDelay'
+type MsgJetstream_NackWithDelay_Call struct {
+	*mock.Call
+}
+
+// NackWithDelay is a helper method to define mock.On call
+//   - context1 context.Context
+//   - duration time.Duration
+func (_e *MsgJetstream_Expecter) NackWithDelay(context1 interface{}, duration interface{}) *MsgJetstream_NackWithDelay_Call {
+	return &MsgJetstream_NackWithDelay_Call{Call: _e.mock.On("NackWithDelay", context1, duration)}
+}
+
+func (_c *MsgJetstream_NackWithDelay_Call) Run(run func(context1 context.Context, duration time.Duration)) *MsgJetstream_NackWithDelay_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 time.Duration
+		if args[1] != nil {
+			arg1 = args[1].(time.Duration)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MsgJetstream_NackWithDelay_Call) Return(err error) *MsgJetstream_NackWithDelay_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MsgJetstream_NackWithDelay_Call) RunAndReturn(run func(context1 context.Context, duration time.Duration) error) *MsgJetstream_NackWithDelay_Call {
 	_c.Call.Return(run)
 	return _c
 }

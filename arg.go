@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/mikluko/peanats/internal/xargpool"
 )
@@ -99,6 +100,10 @@ func (a *argAckableImpl[T]) Ack(ctx context.Context) error {
 
 func (a *argAckableImpl[T]) Nak(ctx context.Context) error {
 	return a.Msg.(Ackable).Nak(ctx)
+}
+
+func (a *argAckableImpl[T]) NackWithDelay(ctx context.Context, d time.Duration) error {
+	return a.Msg.(Ackable).NackWithDelay(ctx, d)
 }
 
 func (a *argAckableImpl[T]) Term(ctx context.Context) error {

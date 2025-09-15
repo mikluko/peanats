@@ -143,6 +143,12 @@ func (a *ackableWrapper) Nak(ctx context.Context) error {
 	return err
 }
 
+func (a *ackableWrapper) NackWithDelay(ctx context.Context, delay time.Duration) error {
+	err := a.Msg.(peanats.Ackable).NackWithDelay(ctx, delay)
+	a.counter.WithLabelValues(a.Subject(), "nak").Inc()
+	return err
+}
+
 func (a *ackableWrapper) Term(ctx context.Context) error {
 	err := a.Msg.(peanats.Ackable).Term(ctx)
 	a.counter.WithLabelValues(a.Subject(), "term").Inc()
