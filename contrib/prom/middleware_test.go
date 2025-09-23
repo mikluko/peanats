@@ -135,7 +135,7 @@ func TestPrometheusMiddleware_AckCounting(t *testing.T) {
 			tt.setupMock(mockMsg)
 
 			// Create middleware with custom registry
-			middleware := Middleware(middlewareRegisterer(registry))
+			middleware := Middleware(MiddlewareRegisterer(registry))
 
 			// Create a simple handler that performs the ack operation
 			handler := peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
@@ -183,7 +183,7 @@ func TestPrometheusMiddleware_NonAckableMessage(t *testing.T) {
 	mockMsg.EXPECT().Header().Return(peanats.Header{}).Maybe()
 
 	// Create middleware with custom registry
-	middleware := Middleware(middlewareRegisterer(registry))
+	middleware := Middleware(MiddlewareRegisterer(registry))
 
 	// Create a simple handler
 	handler := peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
@@ -221,7 +221,7 @@ func TestPrometheusMiddleware_HandlerError(t *testing.T) {
 	mockMsg.EXPECT().Header().Return(peanats.Header{}).Maybe()
 
 	// Create middleware with custom registry
-	middleware := Middleware(middlewareRegisterer(registry))
+	middleware := Middleware(MiddlewareRegisterer(registry))
 
 	// Create a handler that returns an error
 	expectedError := errors.New("handler error")
@@ -257,7 +257,7 @@ func TestPrometheusMiddleware_InFlightGauge(t *testing.T) {
 	mockMsg.EXPECT().Header().Return(peanats.Header{}).Maybe()
 
 	// Create middleware with custom registry
-	middleware := Middleware(middlewareRegisterer(registry))
+	middleware := Middleware(MiddlewareRegisterer(registry))
 
 	// Track in-flight gauge during handler execution
 	var inFlightDuringExecution int
@@ -303,7 +303,7 @@ func TestPrometheusMiddleware_MultipleAckOperations(t *testing.T) {
 	mockMsg.EXPECT().Ack(context.Background()).Return(nil).Once()
 
 	// Create middleware with custom registry
-	middleware := Middleware(middlewareRegisterer(registry))
+	middleware := Middleware(MiddlewareRegisterer(registry))
 
 	// Create a handler that performs multiple ack operations
 	handler := peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
@@ -356,7 +356,7 @@ func TestPrometheusMiddleware_CustomNamespaceSubsystem(t *testing.T) {
 	middleware := Middleware(
 		MiddlewareNamespace("myapp"),
 		MiddlewareSubsystem("messaging"),
-		middlewareRegisterer(registry),
+		MiddlewareRegisterer(registry),
 	)
 
 	// Create a simple handler
@@ -417,7 +417,7 @@ func TestPrometheusMiddleware_MetadatablePassthrough(t *testing.T) {
 	mockMsg.EXPECT().Metadata().Return(expectedMetadata, nil).Once()
 
 	// Create middleware with custom registry
-	middleware := Middleware(middlewareRegisterer(registry))
+	middleware := Middleware(MiddlewareRegisterer(registry))
 
 	// Create a handler that verifies Metadatable interface works through the wrapper
 	handler := peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {

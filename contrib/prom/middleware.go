@@ -7,15 +7,15 @@ import (
 	"github.com/mikluko/peanats"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 // Option configures Prometheus middleware
 type Option func(*params)
 
 type params struct {
-	namespace string
-	subsystem string
-	// For testing purposes
+	namespace  string
+	subsystem  string
 	registerer prometheus.Registerer
 }
 
@@ -33,8 +33,8 @@ func MiddlewareSubsystem(subsystem string) Option {
 	}
 }
 
-// middlewareRegisterer sets a custom Prometheus registerer (for testing)
-func middlewareRegisterer(registerer prometheus.Registerer) Option {
+// MiddlewareRegisterer sets a custom Prometheus registerer (for testing)
+func MiddlewareRegisterer(registerer prometheus.Registerer) Option {
 	return func(p *params) {
 		p.registerer = registerer
 	}
@@ -53,7 +53,7 @@ func Middleware(opts ...Option) peanats.MsgMiddleware {
 	}
 
 	// Total number of messages processed by subject and status
-	msgsProcessed := prometheus.NewCounterVec(prometheus.CounterOpts{
+	msgsProcessed := promauto.With(p.registerer).NewCounterVec(prometheus.CounterOpts{
 		Namespace: p.namespace,
 		Subsystem: p.subsystem,
 		Name:      "processed_total",
@@ -61,7 +61,7 @@ func Middleware(opts ...Option) peanats.MsgMiddleware {
 	}, []string{"subject", "status"})
 
 	// Message processing latency histogram by subject
-	msgDuration := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+	msgDuration := promauto.With(p.registerer).NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: p.namespace,
 		Subsystem: p.subsystem,
 		Name:      "latency_seconds",
@@ -70,7 +70,7 @@ func Middleware(opts ...Option) peanats.MsgMiddleware {
 	}, []string{"subject"})
 
 	// Messages currently being processed
-	msgsInFlight := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	msgsInFlight := promauto.With(p.registerer).NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: p.namespace,
 		Subsystem: p.subsystem,
 		Name:      "in_flight",
@@ -78,15 +78,12 @@ func Middleware(opts ...Option) peanats.MsgMiddleware {
 	}, []string{"subject"})
 
 	// Message acknowledgment counters by subject and ack type
-	msgsAcked := prometheus.NewCounterVec(prometheus.CounterOpts{
+	msgsAcked := promauto.With(p.registerer).NewCounterVec(prometheus.CounterOpts{
 		Namespace: p.namespace,
 		Subsystem: p.subsystem,
 		Name:      "acked_total",
 		Help:      "Total number of message acknowledgments",
 	}, []string{"subject", "type"})
-
-	// Register metrics
-	p.registerer.MustRegister(msgsProcessed, msgDuration, msgsInFlight, msgsAcked)
 
 	return func(next peanats.MsgHandler) peanats.MsgHandler {
 		return peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
