@@ -12,7 +12,10 @@ import (
 	"github.com/mikluko/peanats"
 )
 
-var ErrInitialValuesOver = errors.New("initial values done")
+var (
+	ErrInitialValuesOver = errors.New("initial values done")
+	ErrDone              = errors.New("updates done")
+)
 
 type Watcher[T any] interface {
 	Next() (Entry[T], error)
@@ -112,7 +115,7 @@ func (w *watcherImpl[T]) Next() (_ Entry[T], err error) {
 		}
 		return v, nil
 	}
-	return nil, io.EOF
+	return nil, ErrDone
 }
 
 func (w *watcherImpl[T]) Stop() error {
