@@ -195,6 +195,18 @@ func (c *connectionImpl) SubscribeHandler(ctx context.Context, subj string, h Ms
 func (c *connectionImpl) mirror(mch chan Msg) chan *nats.Msg {
 	nch := make(chan *nats.Msg, cap(mch))
 	go func() {
+		defer func() {
+			// Recover from "send on closed channel" panic that occurs when
+			// the consumer closes mch while messages are still being received.
+			// Drain remaining messages from nch to avoid blocking the NATS library.
+			//
+			// TODO: This is technical debt. A proper solution using a done channel
+			// would require API changes to SubscribeChan. Postponed for now.
+			if recover() != nil {
+				for range nch {
+				}
+			}
+		}()
 		for msg := range nch {
 			mch <- NewMsg(msg)
 		}
