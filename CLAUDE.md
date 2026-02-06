@@ -176,6 +176,16 @@ Each package implements a specific messaging pattern with full type safety:
 - Added .Once() to mock expectations to ensure proper call sequencing
 - Made Header() calls optional with .Maybe() to handle conditional execution paths
 
+#### Tracing Publisher Events (v0.21.0)
+
+- Publisher tracing converted from spans to events — publishes add events to existing spans
+- Eliminates redundant root spans (e.g. 0.04ms publish span parenting entire trace tree)
+- Removed: PublisherWithTracer, PublisherWithSpanName, PublisherWithNewRoot, PublisherWithLinks
+- Added: PublisherWithEventName (default "peanats.publish"), PublisherWithAttributes
+- Header injection still happens regardless of span state for cross-process propagation
+- Design principle: fire-and-forget operations → events; operations with duration → spans
+- Middleware and requester keep spans (message handling and request/reply have meaningful duration)
+
 #### Requester Header Management Fix
 
 - Fixed critical bug in RequestHeader function that was replacing headers instead of merging
@@ -186,6 +196,7 @@ Each package implements a specific messaging pattern with full type safety:
 
 ### Changelog
 
+- 2026-02-06: v0.21.0 — Replaced publisher trace spans with events (breaking: removed span-related options)
 - 2025-07-02: Fixed prometheus middleware to preserve Metadatable interface when wrapping messages
 
 - 2025-05-26: Created initial CLAUDE.md with architecture overview and development commands

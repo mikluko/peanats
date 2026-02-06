@@ -41,7 +41,7 @@ func TestTracingMiddleware(t *testing.T) {
 	middleware := Middleware(
 		MiddlewareWithTracer(tracer),
 		MiddlewareWithSpanKind(trace.SpanKindConsumer),
-		MiddlewareWithHeaders(true),
+		MiddlewareWithEventHeaders(),
 	)
 
 	// Wrap handler
@@ -114,7 +114,7 @@ func TestMiddleware_TracePropagation(t *testing.T) {
 	// Create middleware with trace extraction enabled
 	middleware := Middleware(
 		MiddlewareWithTracer(tracer),
-		MiddlewareWithHeaders(true),
+		MiddlewareWithEventHeaders(),
 	)
 	wrappedHandler := middleware(handler)
 

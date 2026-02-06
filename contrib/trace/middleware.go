@@ -21,8 +21,8 @@ type middlewareOptions struct {
 	spanKind       trace.SpanKind
 	spanName       string
 	spanAttributes []attribute.KeyValue
-	withHeaders    bool
-	withData       bool
+	eventHeaders   bool
+	eventData      bool
 	truncateDataAt int
 }
 
@@ -61,17 +61,18 @@ func MiddlewareWithAttributes(attrs ...attribute.KeyValue) MiddlewareOption {
 	}
 }
 
-// MiddlewareWithHeaders enables trace context extraction from message headers
-func MiddlewareWithHeaders(v bool) MiddlewareOption {
+// MiddlewareWithEventHeaders enables adding a span event with message headers
+func MiddlewareWithEventHeaders() MiddlewareOption {
 	return func(o *middlewareOptions) {
-		o.withHeaders = v
+		o.eventHeaders = true
 	}
 }
 
-// MiddlewareWithData enables recording message data as span attributes
-func MiddlewareWithData(v bool, truncateAt int) MiddlewareOption {
+// MiddlewareWithEventData enables adding a span event with message data, truncated to the given length.
+// A zero or negative truncateAt means no truncation.
+func MiddlewareWithEventData(truncateAt int) MiddlewareOption {
 	return func(o *middlewareOptions) {
-		o.withData = v
+		o.eventData = true
 		o.truncateDataAt = truncateAt
 	}
 }
@@ -87,32 +88,12 @@ func Middleware(opts ...MiddlewareOption) peanats.MsgMiddleware {
 	}
 	return func(next peanats.MsgHandler) peanats.MsgHandler {
 		return peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
-			attrs := append(cfg.spanAttributes,
+			spanAttrs := append(cfg.spanAttributes,
 				attribute.String("nats.subject", msg.Subject()),
 			)
-			if cfg.withHeaders {
-				for name, values := range msg.Header() {
-					name = textproto.CanonicalMIMEHeaderKey(name)
-					for _, v := range values {
-						attrs = append(attrs, attribute.String(fmt.Sprintf("nats.header.%s", name), v))
-					}
-				}
-			}
-			if cfg.withData {
-				dataFull := string(msg.Data())
-				dataTrunc := dataFull
-				if cfg.truncateDataAt > 0 && len(dataFull) > cfg.truncateDataAt {
-					dataTrunc = dataFull[:cfg.truncateDataAt]
-				}
-				attrs = append(attrs,
-					attribute.String("nats.data", dataTrunc),
-					attribute.Int("nats.data_length", len(dataFull)),
-					attribute.Bool("nats.data_truncated", len(dataFull) != len(dataTrunc)),
-				)
-			}
 			if metadatable, ok := msg.(peanats.Metadatable); ok {
 				if meta, err := metadatable.Metadata(); err == nil {
-					attrs = append(attrs,
+					spanAttrs = append(spanAttrs,
 						attribute.Int64("nats.jetstream.stream_seq", int64(meta.Sequence.Stream)),
 						attribute.Int64("nats.jetstream.consumer_seq", int64(meta.Sequence.Consumer)),
 						attribute.Int("nats.jetstream.num_delivered", int(meta.NumDelivered)),
@@ -123,13 +104,41 @@ func Middleware(opts ...MiddlewareOption) peanats.MsgMiddleware {
 					)
 				}
 			}
+
 			propagator := otel.GetTextMapPropagator()
-			ctxPropagator := propagator.Extract(ctx, propagation.HeaderCarrier(msg.Header()))
-			ctxSpan, span := cfg.tracer.Start(ctxPropagator, cfg.spanName,
+			ctx = propagator.Extract(ctx, propagation.HeaderCarrier(msg.Header()))
+
+			ctxSpan, span := cfg.tracer.Start(ctx, cfg.spanName,
 				trace.WithSpanKind(cfg.spanKind),
-				trace.WithAttributes(attrs...),
+				trace.WithAttributes(spanAttrs...),
 			)
 			defer span.End()
+
+			if cfg.eventHeaders || cfg.eventData {
+				var eventAttrs []attribute.KeyValue
+				if cfg.eventHeaders {
+					for name, values := range msg.Header() {
+						name = textproto.CanonicalMIMEHeaderKey(name)
+						for _, v := range values {
+							eventAttrs = append(eventAttrs, attribute.String(fmt.Sprintf("nats.header.%s", name), v))
+						}
+					}
+				}
+				if cfg.eventData {
+					dataFull := string(msg.Data())
+					dataTrunc := dataFull
+					if cfg.truncateDataAt > 0 && len(dataFull) > cfg.truncateDataAt {
+						dataTrunc = dataFull[:cfg.truncateDataAt]
+					}
+					eventAttrs = append(eventAttrs,
+						attribute.String("nats.data", dataTrunc),
+						attribute.Int("nats.data_length", len(dataFull)),
+						attribute.Bool("nats.data_truncated", len(dataFull) != len(dataTrunc)),
+					)
+				}
+				span.AddEvent("nats.message", trace.WithAttributes(eventAttrs...))
+			}
+
 			err := next.HandleMsg(ctxSpan, msg)
 			if err != nil {
 				span.RecordError(err)
