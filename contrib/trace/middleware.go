@@ -94,10 +94,6 @@ func Middleware(opts ...MiddlewareOption) peanats.MsgMiddleware {
 			if metadatable, ok := msg.(peanats.Metadatable); ok {
 				if meta, err := metadatable.Metadata(); err == nil {
 					spanAttrs = append(spanAttrs,
-						attribute.Int64("nats.jetstream.stream_seq", int64(meta.Sequence.Stream)),
-						attribute.Int64("nats.jetstream.consumer_seq", int64(meta.Sequence.Consumer)),
-						attribute.Int("nats.jetstream.num_delivered", int(meta.NumDelivered)),
-						attribute.Int("nats.jetstream.num_pending", int(meta.NumPending)),
 						attribute.String("nats.jetstream.stream", meta.Stream),
 						attribute.String("nats.jetstream.consumer", meta.Consumer),
 						attribute.String("nats.jetstream.domain", meta.Domain),
@@ -114,28 +110,38 @@ func Middleware(opts ...MiddlewareOption) peanats.MsgMiddleware {
 			)
 			defer span.End()
 
-			if cfg.eventHeaders || cfg.eventData {
-				var eventAttrs []attribute.KeyValue
-				if cfg.eventHeaders {
-					for name, values := range msg.Header() {
-						name = textproto.CanonicalMIMEHeaderKey(name)
-						for _, v := range values {
-							eventAttrs = append(eventAttrs, attribute.String(fmt.Sprintf("nats.header.%s", name), v))
-						}
-					}
-				}
-				if cfg.eventData {
-					dataFull := string(msg.Data())
-					dataTrunc := dataFull
-					if cfg.truncateDataAt > 0 && len(dataFull) > cfg.truncateDataAt {
-						dataTrunc = dataFull[:cfg.truncateDataAt]
-					}
+			var eventAttrs []attribute.KeyValue
+			if metadatable, ok := msg.(peanats.Metadatable); ok {
+				if meta, err := metadatable.Metadata(); err == nil {
 					eventAttrs = append(eventAttrs,
-						attribute.String("nats.data", dataTrunc),
-						attribute.Int("nats.data_length", len(dataFull)),
-						attribute.Bool("nats.data_truncated", len(dataFull) != len(dataTrunc)),
+						attribute.Int64("nats.jetstream.stream_seq", int64(meta.Sequence.Stream)),
+						attribute.Int64("nats.jetstream.consumer_seq", int64(meta.Sequence.Consumer)),
+						attribute.Int("nats.jetstream.num_delivered", int(meta.NumDelivered)),
+						attribute.Int("nats.jetstream.num_pending", int(meta.NumPending)),
 					)
 				}
+			}
+			if cfg.eventHeaders {
+				for name, values := range msg.Header() {
+					name = textproto.CanonicalMIMEHeaderKey(name)
+					for _, v := range values {
+						eventAttrs = append(eventAttrs, attribute.String(fmt.Sprintf("nats.header.%s", name), v))
+					}
+				}
+			}
+			if cfg.eventData {
+				dataFull := string(msg.Data())
+				dataTrunc := dataFull
+				if cfg.truncateDataAt > 0 && len(dataFull) > cfg.truncateDataAt {
+					dataTrunc = dataFull[:cfg.truncateDataAt]
+				}
+				eventAttrs = append(eventAttrs,
+					attribute.String("nats.data", dataTrunc),
+					attribute.Int("nats.data_length", len(dataFull)),
+					attribute.Bool("nats.data_truncated", len(dataFull) != len(dataTrunc)),
+				)
+			}
+			if len(eventAttrs) > 0 {
 				span.AddEvent("nats.message", trace.WithAttributes(eventAttrs...))
 			}
 
