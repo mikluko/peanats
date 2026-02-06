@@ -14,54 +14,31 @@ import (
 // PublisherOption configures a trace-aware publisher
 type PublisherOption func(*tracingPublisher)
 
-// PublisherWithTracer sets the tracer for the publisher
-func PublisherWithTracer(tracer trace.Tracer) PublisherOption {
+// PublisherWithEventName sets the event name for publish operations
+func PublisherWithEventName(name string) PublisherOption {
 	return func(pub *tracingPublisher) {
-		pub.tracer = tracer
+		pub.eventName = name
 	}
 }
 
-// PublisherWithSpanName sets the span name for traces created by the publisher
-func PublisherWithSpanName(name string) PublisherOption {
-	return func(pub *tracingPublisher) {
-		pub.spanName = name
-	}
-}
-
-// PublisherWithAttributes adds attributes to all spans created by the publisher
+// PublisherWithAttributes adds attributes to all events created by the publisher
 func PublisherWithAttributes(attrs ...attribute.KeyValue) PublisherOption {
 	return func(pub *tracingPublisher) {
-		pub.opts = append(pub.opts, trace.WithAttributes(attrs...))
-	}
-}
-
-// PublisherWithNewRoot indicates that the publisher should start a new root span for each publish operation
-func PublisherWithNewRoot() PublisherOption {
-	return func(pub *tracingPublisher) {
-		pub.root = true
-	}
-}
-
-// PublisherWithLinks adds a links to the span created by the publisher
-func PublisherWithLinks(links ...trace.Link) PublisherOption {
-	return func(pub *tracingPublisher) {
-		pub.opts = append(pub.opts, trace.WithLinks(links...))
+		pub.attrs = append(pub.attrs, attrs...)
 	}
 }
 
 type tracingPublisher struct {
 	publisher.Publisher
-	tracer   trace.Tracer
-	spanName string
-	opts     []trace.SpanStartOption
-	root     bool // indicates if a new root span should be created for each publish operation
+	eventName string
+	attrs     []attribute.KeyValue
 }
 
 // NewPublisher creates a new trace-aware publisher that implements publisher.Publisher
 func NewPublisher(pub publisher.Publisher, opts ...PublisherOption) publisher.Publisher {
 	res := tracingPublisher{
 		Publisher: pub,
-		spanName:  "peanats.publish",
+		eventName: "peanats.publish",
 	}
 	for _, opt := range opts {
 		opt(&res)
@@ -71,25 +48,22 @@ func NewPublisher(pub publisher.Publisher, opts ...PublisherOption) publisher.Pu
 
 // Publish publishes a message with trace context propagation
 func (p *tracingPublisher) Publish(ctx context.Context, subject string, data any, opts ...publisher.PublishOption) error {
-	// Start a new span for the publish operation
-	spanOpts := append(p.opts,
-		trace.WithSpanKind(trace.SpanKindProducer),
-		trace.WithAttributes(attribute.String("nats.subject", subject)),
-	)
-	if p.root {
-		spanOpts = append(spanOpts, trace.WithNewRoot(), trace.WithLinks(trace.LinkFromContext(ctx)))
-	}
-	ctx, span := p.tracer.Start(ctx, p.spanName, spanOpts...)
-	defer span.End()
+	span := trace.SpanFromContext(ctx)
 
+	// Inject trace context into headers for propagation
 	header := make(peanats.Header)
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(header))
 
 	err := p.Publisher.Publish(ctx, subject, data, append(opts, publisher.WithHeader(header))...)
-	if err != nil {
-		span.RecordError(err)
-		return err
+
+	// Add event to span if it's recording
+	if span.IsRecording() {
+		attrs := append([]attribute.KeyValue{attribute.String("nats.subject", subject)}, p.attrs...)
+		if err != nil {
+			attrs = append(attrs, attribute.String("error", err.Error()))
+		}
+		span.AddEvent(p.eventName, trace.WithAttributes(attrs...))
 	}
 
-	return nil
+	return err
 }
