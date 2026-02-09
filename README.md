@@ -73,7 +73,6 @@ pub.Publish(ctx, "subject", MyStruct{}, publisher.WithContentType(codec.JSON))
 - **`logging/`** - Structured logging with Go's slog package
 - **`acknak/`** - Message acknowledgment helpers for JetStream
 - **`pond/`** - Worker pool integration using Alitto Pond
-- **`raft/`** - Raft consensus algorithm integration
 - **`muxer/`** - Message routing and multiplexing utilities
 
 ## Quick Start

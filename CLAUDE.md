@@ -70,7 +70,6 @@ Each package implements a specific messaging pattern with full type safety:
 - **`/trace/`**: OpenTelemetry tracing and metrics integration
 - **`/logging/`**: Structured logging with Go's slog package
 - **`/pond/`**: Worker pool integration using Alitto Pond
-- **`/raft/`**: Raft consensus algorithm integration
 - **`/acknak/`**: Message acknowledgment helpers
 - **`/muxer/`**: Message routing and multiplexing utilities
 
@@ -216,7 +215,7 @@ Each package implements a specific messaging pattern with full type safety:
 - Default error handling no longer panics — errors collected and returned from `Wait()`
 - `contrib/pond` provides pool-backed `Dispatcher` via `pond.Dispatcher(n)` / `pond.DispatcherPool(pool)`
 - Deleted: `subm.go` (Submitter, SubmitterFunc, DefaultSubmitter), `err.go` (ErrorHandler, ErrorHandlerFunc, DefaultErrorHandler)
-- All call sites updated: transport, subscriber, consumer, bucket, raft, pond
+- All call sites updated: transport, subscriber, consumer, bucket, pond
 
 ### Changelog
 

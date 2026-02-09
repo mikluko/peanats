@@ -11,6 +11,10 @@ with no deprecated aliases — all consumers must update imports and symbol name
 Additionally, a queue subscription bug was fixed: `Subscribe()` and `SubscribeHandler()` had
 inverted conditions where `queue=""` incorrectly called queue methods and vice versa.
 
+### Deprecated packages
+
+- **`contrib/raft`** — Deprecated and removed. The package had no consumers outside its own tests and wrapped `nats-io/graft` with minimal added value. If you depend on it, pin to v0.21.x and consider using `nats-io/graft` directly.
+
 ### New imports
 
 | Package     | Import path                            |
@@ -161,7 +165,6 @@ type Dispatcher interface {
 | `bucket.WatchErrorHandler(errh)` | Removed (use `WatchDispatcher`) |
 | `transport.SubscribeHandlerSubmitter(subm)` | `transport.SubscribeHandlerDispatcher(disp)` |
 | `transport.SubscribeHandlerErrorHandler(errh)` | Removed (use `SubscribeHandlerDispatcher`) |
-| `raft.WithErrorHandler(errh)` | `raft.WithDispatcher(disp)` |
 | `pond.Submitter(n)` | `pond.Dispatcher(n)` |
 | `pond.SubmitterPool(pool)` | `pond.DispatcherPool(pool)` |
 
@@ -218,7 +221,6 @@ find . -name '*.go' -exec sed -i'' \
   -e 's/bucket\.WatchErrorHandler/bucket.WatchDispatcher/g' \
   -e 's/pond\.Submitter/pond.Dispatcher/g' \
   -e 's/pond\.SubmitterPool/pond.DispatcherPool/g' \
-  -e 's/raft\.WithErrorHandler/raft.WithDispatcher/g' \
   {} +
 
 # Fix imports (adds codec/ and transport/, removes unused peanats imports)
