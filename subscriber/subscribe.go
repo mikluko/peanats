@@ -11,8 +11,7 @@ type SubscribeOption func(*subscribeParams)
 type subscribeParams struct {
 	buffer    uint
 	queue     string
-	subm      peanats.Submitter
-	errh      peanats.ErrorHandler
+	disp      peanats.Dispatcher
 	emptyDone bool
 }
 
@@ -31,17 +30,10 @@ func SubscribeQueue(name string) SubscribeOption {
 	}
 }
 
-// SubscribeSubmitter sets the function that will be used to execute the handler.
-func SubscribeSubmitter(subm peanats.Submitter) SubscribeOption {
+// SubscribeDispatcher sets the dispatcher for the subscription.
+func SubscribeDispatcher(disp peanats.Dispatcher) SubscribeOption {
 	return func(p *subscribeParams) {
-		p.subm = subm
-	}
-}
-
-// SubscribeErrorHandler sets error handler for the subscription.
-func SubscribeErrorHandler(errh peanats.ErrorHandler) SubscribeOption {
-	return func(p *subscribeParams) {
-		p.errh = errh
+		p.disp = disp
 	}
 }
 
@@ -57,8 +49,7 @@ func SubscribeEmptyDone(x bool) SubscribeOption {
 func SubscribeChan(ctx context.Context, h peanats.MsgHandler, opts ...SubscribeOption) (chan peanats.Msg, error) {
 	p := subscribeParams{
 		buffer:    1,
-		subm:      peanats.DefaultSubmitter,
-		errh:      peanats.DefaultErrorHandler,
+		disp:      peanats.DefaultDispatcher,
 		emptyDone: false,
 	}
 	for _, o := range opts {
@@ -74,11 +65,8 @@ func SubscribeChan(ctx context.Context, h peanats.MsgHandler, opts ...SubscribeO
 				if msg == nil {
 					return
 				}
-				p.subm.Submit(func() {
-					err := h.HandleMsg(ctx, msg)
-					if err != nil {
-						p.errh.HandleError(ctx, err)
-					}
+				p.disp.Dispatch(func() error {
+					return h.HandleMsg(ctx, msg)
 				})
 			}
 		}

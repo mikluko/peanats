@@ -26,11 +26,11 @@ func BenchmarkConsume(b *testing.B) {
 	// worker pool is expected to be slower vs single-threaded on no-op benchmark handler
 	b.Run("pool/json", func(b *testing.B) {
 		benchmarkConsume(b, xtestutil.Must(codec.ForContentType(codec.JSON)),
-			consumer.ConsumeSubmitter(pond.Submitter(250)))
+			consumer.ConsumeDispatcher(pond.Dispatcher(250)))
 	})
 	b.Run("pool/msgpack", func(b *testing.B) {
 		benchmarkConsume(b, xtestutil.Must(codec.ForContentType(codec.Msgpack)),
-			consumer.ConsumeSubmitter(pond.Submitter(250)))
+			consumer.ConsumeDispatcher(pond.Dispatcher(250)))
 	})
 }
 

@@ -128,7 +128,7 @@ func BenchmarkRequester_ResponseReceiver(b *testing.B) {
 	subch, _ := subscriber.SubscribeChan(
 		b.Context(),
 		peanats.MsgHandlerFromArgHandler(argh),
-		subscriber.SubscribeSubmitter(pond.Submitter(1000)),
+		subscriber.SubscribeDispatcher(pond.Dispatcher(1000)),
 	)
 	sub, err := nc.SubscribeChan(b.Context(), "baz.qux", subch)
 

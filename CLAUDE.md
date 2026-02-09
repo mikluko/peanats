@@ -53,7 +53,7 @@ go mod tidy
 - **Message System** (`msg.go`): Typed message interfaces supporting both regular NATS and JetStream messages
 - **Codec System** (`codec/`): Multi-format serialization (JSON, YAML, MessagePack, Protocol Buffers) with content-type based selection
 - **Transport Layer** (`transport/`): NATS connection adapter (`transport.Conn`) wrapping `*nats.Conn` with typed message operations; also defines `Subscription` and `Unsubscriber` interfaces
-- **Submitter Pattern** (`subm.go`): Async task execution abstraction for decoupled processing
+- **Dispatcher Pattern** (`dispatcher.go`): Async task dispatch with error collection and graceful drain
 
 ### Messaging Patterns
 
@@ -78,7 +78,7 @@ Each package implements a specific messaging pattern with full type safety:
 
 1. **Type Safety**: Heavy use of Go generics (requires Go 1.24+) for compile-time type checking of message payloads
 2. **Content-Type Aware**: Automatic codec selection based on NATS message headers
-3. **Async Processing**: Built-in support for submitter patterns to decouple message handling
+3. **Async Processing**: Built-in dispatcher pattern for async task execution with error collection and drain support
 4. **Observability**: First-class OpenTelemetry and structured logging support
 5. **Modularity**: Clear separation between core functionality and optional integrations
 
@@ -127,7 +127,7 @@ Each package implements a specific messaging pattern with full type safety:
 - Heavy use of Go 1.24+ generics for compile-time type safety
 - 5 core messaging patterns: publisher, subscriber, consumer, requester, bucket
 - Multi-format codec system with content-type aware serialization
-- Async processing via submitter patterns for decoupled handling
+- Async processing via dispatcher pattern for decoupled handling with error collection and drain
 - Comprehensive contrib package ecosystem for integrations
 - Production-ready with extensive test coverage and mock generation
 
@@ -197,7 +197,7 @@ Each package implements a specific messaging pattern with full type safety:
 
 - Extracted `codec/` package from root: `Codec` interface, `ContentType` enum, all codec implementations, marshal/unmarshal helpers
 - Extracted `transport/` package from root: `Conn` interface wrapping `*nats.Conn`, all subscribe options
-- Root package now contains: message types, handlers, middleware, arg system, submitter, error handling, logging
+- Root package now contains: message types, handlers, middleware, arg system, dispatcher, logging
 - `codec/` defines its own `Header = textproto.MIMEHeader` alias (identical to `peanats.Header`) to avoid circular imports
 - Root imports `codec/` (for `arg.go` unmarshal); `codec/` does NOT import root
 - Renamed symbols: `CodecContentType` → `codec.ForContentType`, `CodecHeader` → `codec.ForHeader`, `WrapConnection` → `transport.Wrap`, `NewConnection` → `transport.New`
@@ -207,8 +207,20 @@ Each package implements a specific messaging pattern with full type safety:
 - Fixed queue subscription bug: inverted conditions in `Subscribe()` and `SubscribeHandler()` where queue="" called queue methods
 - Mock generation: `peanats.Connection` mock replaced with `transport.Conn` mock in `.mockery.yaml`
 
+#### Dispatcher Pattern (replaces Submitter + ErrorHandler)
+
+- Replaced `Submitter` + `ErrorHandler` with single `Dispatcher` interface: `Dispatch(func() error)` + `Wait(ctx) error`
+- `Dispatch` submits tasks for async execution; `Wait` blocks until all complete or context expires
+- Default impl: goroutine per task, `sync.WaitGroup` for tracking, `sync.Mutex` + `[]error` for error collection
+- `errors.Join` used to combine collected errors on `Wait`
+- Default error handling no longer panics — errors collected and returned from `Wait()`
+- `contrib/pond` provides pool-backed `Dispatcher` via `pond.Dispatcher(n)` / `pond.DispatcherPool(pool)`
+- Deleted: `subm.go` (Submitter, SubmitterFunc, DefaultSubmitter), `err.go` (ErrorHandler, ErrorHandlerFunc, DefaultErrorHandler)
+- All call sites updated: transport, subscriber, consumer, bucket, raft, pond
+
 ### Changelog
 
+- 2026-02-09: Replaced Submitter + ErrorHandler with Dispatcher interface; deleted `subm.go` and `err.go`
 - 2026-02-09: Moved `Unsubscriber` and `Subscription` interfaces from root to `transport/` package; deleted `interfaces.go`
 - 2026-02-09: v0.22.0 — Extracted codec/ and transport/ packages from root; fixed queue subscription bug; resolved naming collisions
 - 2026-02-06: v0.21.0 — Replaced publisher trace spans with events (breaking: removed span-related options)

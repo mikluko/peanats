@@ -31,7 +31,7 @@ func New(nc *nats.Conn, opts ...Option) (Raft, error) {
 		size: 3,
 		ctx:  context.Background(),
 		schh: nullStateChangeHandlerImpl{},
-		errh: peanats.DefaultErrorHandler,
+		disp: peanats.DefaultDispatcher,
 		log:  "/dev/null",
 	}
 	for _, o := range opts {
@@ -39,7 +39,7 @@ func New(nc *nats.Conn, opts ...Option) (Raft, error) {
 	}
 	r := raftImpl{
 		schh: p.schh,
-		errh: p.errh,
+		disp: p.disp,
 		chc:  make(chan graft.StateChange),
 		che:  make(chan error),
 		cond: sync.Cond{L: new(sync.Mutex)},
@@ -82,7 +82,7 @@ type RaftParams struct {
 	name string
 	ctx  context.Context
 	schh StateChangeHandler
-	errh peanats.ErrorHandler
+	disp peanats.Dispatcher
 	log  string
 }
 
@@ -106,9 +106,9 @@ func WithContext(ctx context.Context) Option {
 	}
 }
 
-func WithErrorHandler(errh peanats.ErrorHandler) Option {
+func WithDispatcher(disp peanats.Dispatcher) Option {
 	return func(o *RaftParams) {
-		o.errh = errh
+		o.disp = disp
 	}
 }
 
@@ -127,7 +127,7 @@ func WithLog(log string) Option {
 type raftImpl struct {
 	node *graft.Node
 
-	errh peanats.ErrorHandler
+	disp peanats.Dispatcher
 	schh StateChangeHandler
 
 	chc  chan graft.StateChange
@@ -166,13 +166,13 @@ func (r *raftImpl) loop(ctx context.Context) {
 		case c := <-r.chc:
 			err := r.schh.HandleStateChange(ctx, c.From, c.To)
 			if err != nil {
-				r.errh.HandleError(ctx, err)
+				r.disp.Dispatch(func() error { return err })
 			}
 			r.cond.L.Lock()
 			r.cond.Broadcast()
 			r.cond.L.Unlock()
 		case err := <-r.che:
-			r.errh.HandleError(ctx, err)
+			r.disp.Dispatch(func() error { return err })
 		case <-ctx.Done():
 			r.node.Close()
 			close(r.che)

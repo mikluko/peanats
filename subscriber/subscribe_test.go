@@ -35,7 +35,7 @@ func BenchmarkSubscribeChan(b *testing.B) {
 		benchmarkSubscribeChan(b, subscriber.SubscribeBuffer(uint(b.N)))
 	})
 	b.Run("worker pool", func(b *testing.B) {
-		benchmarkSubscribeChan(b, subscriber.SubscribeBuffer(uint(b.N)), subscriber.SubscribeSubmitter(pond.Submitter(250)))
+		benchmarkSubscribeChan(b, subscriber.SubscribeBuffer(uint(b.N)), subscriber.SubscribeDispatcher(pond.Dispatcher(250)))
 	})
 }
 

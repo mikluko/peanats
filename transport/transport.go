@@ -55,15 +55,12 @@ type upstream interface {
 
 var _ upstream = (*nats.Conn)(nil)
 
-func upstreamHandler(ctx context.Context, msgh peanats.MsgHandler, errh peanats.ErrorHandler, subm peanats.Submitter) nats.MsgHandler {
+func upstreamHandler(ctx context.Context, msgh peanats.MsgHandler, disp peanats.Dispatcher) nats.MsgHandler {
 	return func(msg *nats.Msg) {
-		subm.Submit(func() {
+		disp.Dispatch(func() error {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			err := msgh.HandleMsg(ctx, peanats.NewMsg(msg))
-			if err != nil {
-				errh.HandleError(ctx, err)
-			}
+			return msgh.HandleMsg(ctx, peanats.NewMsg(msg))
 		})
 	}
 }
@@ -152,21 +149,13 @@ type SubscribeHandlerOption func(*subscribeHandlerParams)
 
 type subscribeHandlerParams struct {
 	queue string
-	subm  peanats.Submitter
-	errh  peanats.ErrorHandler
+	disp  peanats.Dispatcher
 }
 
-// SubscribeHandlerSubmitter sets the task submitter for handler subscriptions.
-func SubscribeHandlerSubmitter(subm peanats.Submitter) SubscribeHandlerOption {
+// SubscribeHandlerDispatcher sets the dispatcher for handler subscriptions.
+func SubscribeHandlerDispatcher(disp peanats.Dispatcher) SubscribeHandlerOption {
 	return func(p *subscribeHandlerParams) {
-		p.subm = subm
-	}
-}
-
-// SubscribeHandlerErrorHandler sets the error handler for handler subscriptions.
-func SubscribeHandlerErrorHandler(errh peanats.ErrorHandler) SubscribeHandlerOption {
-	return func(p *subscribeHandlerParams) {
-		p.errh = errh
+		p.disp = disp
 	}
 }
 
@@ -179,16 +168,15 @@ func SubscribeHandlerQueue(name string) SubscribeHandlerOption {
 
 func (c *connImpl) SubscribeHandler(ctx context.Context, subj string, h peanats.MsgHandler, opts ...SubscribeHandlerOption) (Unsubscriber, error) {
 	p := subscribeHandlerParams{
-		subm: peanats.DefaultSubmitter,
-		errh: peanats.DefaultErrorHandler,
+		disp: peanats.DefaultDispatcher,
 	}
 	for _, o := range opts {
 		o(&p)
 	}
 	if p.queue != "" {
-		return c.nc.QueueSubscribe(subj, p.queue, upstreamHandler(ctx, h, p.errh, p.subm))
+		return c.nc.QueueSubscribe(subj, p.queue, upstreamHandler(ctx, h, p.disp))
 	} else {
-		return c.nc.Subscribe(subj, upstreamHandler(ctx, h, p.errh, p.subm))
+		return c.nc.Subscribe(subj, upstreamHandler(ctx, h, p.disp))
 	}
 }
 

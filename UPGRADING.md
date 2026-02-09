@@ -37,8 +37,8 @@ inverted conditions where `queue=""` incorrectly called queue methods and vice v
 | `peanats.SubscribeOption`                    | `transport.SubscribeOption`                    |
 | `peanats.SubscribeQueue(name)`               | `transport.SubscribeQueue(name)`               |
 | `peanats.SubscribeHandlerOption`             | `transport.SubscribeHandlerOption`             |
-| `peanats.SubscribeHandlerSubmitter(subm)`    | `transport.SubscribeHandlerSubmitter(subm)`    |
-| `peanats.SubscribeHandlerErrorHandler(errh)` | `transport.SubscribeHandlerErrorHandler(errh)` |
+| `peanats.SubscribeHandlerSubmitter(subm)`    | `transport.SubscribeHandlerDispatcher(disp)`   |
+| `peanats.SubscribeHandlerErrorHandler(errh)` | `transport.SubscribeHandlerDispatcher(disp)`   |
 | `peanats.SubscribeChanOption`                | `transport.SubscribeChanOption`                |
 | `peanats.SubscribeChanQueue(name)`           | `transport.SubscribeChanQueue(name)`           |
 
@@ -134,6 +134,40 @@ codec.HeaderContentType: []string{"application/json"},
 }
 ```
 
+### Dispatcher (replaces Submitter + ErrorHandler)
+
+`Submitter` and `ErrorHandler` have been replaced by a single `Dispatcher` interface:
+
+```go
+type Dispatcher interface {
+    Dispatch(func() error)
+    Wait(context.Context) error
+}
+```
+
+| Old | New |
+|-----|-----|
+| `peanats.Submitter` | `peanats.Dispatcher` |
+| `peanats.ErrorHandler` | `peanats.Dispatcher` |
+| `peanats.SubmitterFunc` | Removed |
+| `peanats.ErrorHandlerFunc` | Removed |
+| `peanats.DefaultSubmitter` | `peanats.DefaultDispatcher` |
+| `peanats.DefaultErrorHandler` | `peanats.DefaultDispatcher` |
+| `subscriber.SubscribeSubmitter(subm)` | `subscriber.SubscribeDispatcher(disp)` |
+| `subscriber.SubscribeErrorHandler(errh)` | Removed (use `SubscribeDispatcher`) |
+| `consumer.ConsumeSubmitter(subm)` | `consumer.ConsumeDispatcher(disp)` |
+| `consumer.ConsumeErrorHandler(errh)` | Removed (use `ConsumeDispatcher`) |
+| `bucket.WatchSubmitter(subm)` | `bucket.WatchDispatcher(disp)` |
+| `bucket.WatchErrorHandler(errh)` | Removed (use `WatchDispatcher`) |
+| `transport.SubscribeHandlerSubmitter(subm)` | `transport.SubscribeHandlerDispatcher(disp)` |
+| `transport.SubscribeHandlerErrorHandler(errh)` | Removed (use `SubscribeHandlerDispatcher`) |
+| `raft.WithErrorHandler(errh)` | `raft.WithDispatcher(disp)` |
+| `pond.Submitter(n)` | `pond.Dispatcher(n)` |
+| `pond.SubmitterPool(pool)` | `pond.DispatcherPool(pool)` |
+
+**Behavior change:** The default error handling no longer panics. Errors are collected
+and returned from `Dispatcher.Wait()`. Call `Wait()` during shutdown to retrieve errors.
+
 ### Quick migration
 
 The bulk of the migration is mechanical renaming. The following `sed` + `goimports` pipeline handles
@@ -166,8 +200,8 @@ find . -name '*.go' -exec sed -i'' \
   -e 's/peanats\.SubscribeOption/transport.SubscribeOption/g' \
   -e 's/peanats\.SubscribeQueue/transport.SubscribeQueue/g' \
   -e 's/peanats\.SubscribeHandlerOption/transport.SubscribeHandlerOption/g' \
-  -e 's/peanats\.SubscribeHandlerSubmitter/transport.SubscribeHandlerSubmitter/g' \
-  -e 's/peanats\.SubscribeHandlerErrorHandler/transport.SubscribeHandlerErrorHandler/g' \
+  -e 's/peanats\.SubscribeHandlerSubmitter/transport.SubscribeHandlerDispatcher/g' \
+  -e 's/peanats\.SubscribeHandlerErrorHandler/transport.SubscribeHandlerDispatcher/g' \
   -e 's/peanats\.SubscribeChanOption/transport.SubscribeChanOption/g' \
   -e 's/peanats\.SubscribeChanQueue/transport.SubscribeChanQueue/g' \
   {} +
