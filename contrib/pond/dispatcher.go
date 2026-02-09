@@ -3,6 +3,7 @@ package pond
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/alitto/pond/v2"
@@ -29,14 +30,19 @@ type dispatcherImpl struct {
 
 func (d *dispatcherImpl) Dispatch(f func() error) {
 	d.wg.Add(1)
-	d.pool.Submit(func() {
+	if err := d.pool.Go(func() {
 		defer d.wg.Done()
 		if err := f(); err != nil {
 			d.mu.Lock()
 			d.errs = append(d.errs, err)
 			d.mu.Unlock()
 		}
-	})
+	}); err != nil {
+		d.wg.Done()
+		d.mu.Lock()
+		d.errs = append(d.errs, fmt.Errorf("dispatch failed: %w", err))
+		d.mu.Unlock()
+	}
 }
 
 func (d *dispatcherImpl) Wait(ctx context.Context) error {
