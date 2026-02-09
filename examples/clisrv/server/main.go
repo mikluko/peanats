@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/nats-io/nats.go"
 
@@ -33,11 +34,13 @@ func main() {
 		panic(err)
 	}
 
+	disp := peanats.NewDispatcher()
+
 	h := peanats.ChainMsgMiddleware(
 		peanats.MsgHandlerFromArgHandler[request](&handler{}),
 		logging.AccessLogMiddleware(logging.SlogLogger(slog.Default(), slog.LevelInfo)),
 	)
-	ch, err := subscriber.SubscribeChan(ctx, h)
+	ch, err := subscriber.SubscribeChan(ctx, h, subscriber.SubscribeDispatcher(disp))
 	if err != nil {
 		panic(err)
 	}
@@ -48,6 +51,13 @@ func main() {
 	defer sub.Unsubscribe()
 
 	<-ctx.Done()
+
+	// Wait for in-flight handlers to complete and collect errors.
+	waitCtx, waitCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer waitCancel()
+	if err := disp.Wait(waitCtx); err != nil {
+		slog.Error("dispatcher drain failed", "error", err)
+	}
 }
 
 type handler struct{}
