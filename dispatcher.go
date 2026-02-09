@@ -3,6 +3,7 @@ package peanats
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 )
 
@@ -53,8 +54,10 @@ type Dispatcher interface {
 	Wait(context.Context) error
 }
 
-// DefaultDispatcher is the package-level default Dispatcher used when no custom Dispatcher is provided.
-var DefaultDispatcher Dispatcher = NewDispatcher()
+// DefaultDispatcher is the package-level default Dispatcher used when no custom
+// Dispatcher is provided. It logs and panics on task errors to ensure failures
+// are never silent. Inject a [NewDispatcher] for graceful error collection.
+var DefaultDispatcher Dispatcher = &defaultDispatcher{}
 
 // NewDispatcher creates a Dispatcher that runs each task in a new goroutine,
 // collects errors, and supports context-aware waiting.
@@ -102,5 +105,39 @@ func (d *dispatcherImpl) Wait(ctx context.Context) error {
 		d.errs = nil
 		d.mu.Unlock()
 		return err
+	}
+}
+
+// defaultDispatcher is the fail-fast Dispatcher used as DefaultDispatcher.
+// It logs the error and panics to ensure failures are never silent.
+type defaultDispatcher struct {
+	wg sync.WaitGroup
+}
+
+func (d *defaultDispatcher) Dispatch(f func() error) {
+	if f == nil {
+		return
+	}
+	d.wg.Add(1)
+	go func() {
+		defer d.wg.Done()
+		if err := f(); err != nil {
+			slog.Error("peanats: unhandled dispatch error (use peanats.NewDispatcher for graceful error handling)", "error", err)
+			panic(err)
+		}
+	}()
+}
+
+func (d *defaultDispatcher) Wait(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		d.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
