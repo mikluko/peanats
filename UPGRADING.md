@@ -1,6 +1,6 @@
 # Upgrading
 
-## v0.21.x → v0.22.0
+## v0.22.x → v0.23.0
 
 ### Summary
 
