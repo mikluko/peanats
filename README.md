@@ -110,17 +110,17 @@ func main() {
 ### Request/Reply Pattern
 
 ```go
-// Client
-req := requester.New[MyRequest, MyResponse](tc)
-responses := req.Request(ctx, "service.endpoint", MyRequest{Query: "data"})
+tc, _ := transport.Wrap(nats.Connect(nats.DefaultURL))
 
-for response := range responses {
-    if response.Err != nil {
-        log.Printf("Error: %v", response.Err)
+req := requester.New[MyRequest, MyResponse](tc)
+resp, _ := req.Request(ctx, "service.endpoint", MyRequest{Query: "data"})
+
+for r := range resp {
+    if r.Err != nil {
+        log.Printf("Error: %v", r.Err)
         continue
     }
-    // response.Payload is typed as MyResponse
-    println("Response:", response.Payload.Result)
+    println("Response:", r.Payload.Result)
 }
 ```
 
@@ -140,42 +140,30 @@ entry, _ = kv.Get(ctx, "key1")
 
 ## Middleware & Observability
 
-### Prometheus Metrics
+### Middleware Chain
+
+Middleware wraps message handlers to add cross-cutting concerns. Use `ChainMsgMiddleware`
+to compose them:
 
 ```go
-import "github.com/mikluko/peanats/contrib/prom"
-
-// Add Prometheus middleware
-middleware := prom.Middleware(
-    prom.MiddlewareNamespace("myapp"),
-    prom.MiddlewareSubsystem("events"),
+h := peanats.ChainMsgMiddleware(
+    peanats.MsgHandlerFromArgHandler[MyMessage](&myHandler{}),
+    logging.AccessLogMiddleware(logging.SlogLogger(slog.Default(), slog.LevelInfo)),
+    prom.Middleware(prom.MiddlewareNamespace("myapp")),
 )
 
-// Use with subscriber
-sub := subscriber.New[MyMessage](tc,
-    subscriber.WithMiddleware(middleware))
+ch, _ := subscriber.SubscribeChan(ctx, h)
+sub, _ := tc.SubscribeChan(ctx, "events.>", ch)
 ```
 
 ### OpenTelemetry Tracing
 
 ```go
-import "github.com/mikluko/peanats/contrib/trace"
-
 // Add tracing to publisher
 pub := trace.Publisher(publisher.New(tc))
 
 // Add tracing to requester
 req := trace.Requester(requester.New[MyReq, MyResp](tc))
-```
-
-### Structured Logging
-
-```go
-import "github.com/mikluko/peanats/contrib/logging"
-
-middleware := logging.Middleware(slog.Default())
-sub := subscriber.New[MyMessage](pconn,
-    subscriber.WithMiddleware(middleware))
 ```
 
 ## Requirements
