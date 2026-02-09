@@ -50,9 +50,10 @@ go mod tidy
 
 ### Core Components
 
-- **Connection Management** (`nats.go`): Core interfaces for NATS connections with typed messaging support
 - **Message System** (`msg.go`): Typed message interfaces supporting both regular NATS and JetStream messages
-- **Codec System** (`codec.go`): Multi-format serialization (JSON, YAML, MessagePack, Protocol Buffers) with content-type based selection
+- **Interfaces** (`interfaces.go`): `Subscription` and `Unsubscriber` interfaces
+- **Codec System** (`codec/`): Multi-format serialization (JSON, YAML, MessagePack, Protocol Buffers) with content-type based selection
+- **Transport Layer** (`transport/`): NATS connection adapter (`transport.Conn`) wrapping `*nats.Conn` with typed message operations
 - **Submitter Pattern** (`subm.go`): Async task execution abstraction for decoupled processing
 
 ### Messaging Patterns
@@ -67,8 +68,8 @@ Each package implements a specific messaging pattern with full type safety:
 
 ### Integration Modules (`/contrib/`)
 
-- **`/otel/`**: OpenTelemetry tracing and metrics integration
-- **`/slog/`**: Structured logging with Go's slog package
+- **`/trace/`**: OpenTelemetry tracing and metrics integration
+- **`/logging/`**: Structured logging with Go's slog package
 - **`/pond/`**: Worker pool integration using Alitto Pond
 - **`/raft/`**: Raft consensus algorithm integration
 - **`/acknak/`**: Message acknowledgment helpers
@@ -141,14 +142,13 @@ Each package implements a specific messaging pattern with full type safety:
 - Test structure follows Go conventions with comprehensive coverage
 - Examples in /examples/ for pub/sub and client/server patterns
 
-#### Naming Convention Concerns
+#### Naming Convention Concerns (RESOLVED)
 
-- Multiple "Publisher" interfaces at different abstraction levels cause import conflicts
-- peanats.Publisher (low-level) vs publisher.Publisher (high-level) naming collision
-- Consumer vs Subscriber package distinction unclear from names alone
+- Previously: Multiple "Publisher"/"Requester" interfaces at different abstraction levels caused import conflicts
+- Resolved by extracting `codec/` and `transport/` packages from root
+- `peanats.Publisher`/`peanats.Requester` removed from root; consumer packages define own dependency interfaces
+- `publisher.RawPublisher` and `requester` accepts `transport.Conn` directly
 - consumer/ = JetStream pull consumers, subscriber/ = core NATS subscriptions
-- Potential user confusion when choosing between packages and interfaces
-- Consider renaming strategies for future releases to improve clarity
 
 #### Tracing Requester Implementation
 
@@ -194,8 +194,23 @@ Each package implements a specific messaging pattern with full type safety:
 - Added comprehensive test coverage for header merging behavior
 - Fixed tracing integration to properly preserve user-provided headers
 
+#### Package Structure Refactoring (v0.22.0)
+
+- Extracted `codec/` package from root: `Codec` interface, `ContentType` enum, all codec implementations, marshal/unmarshal helpers
+- Extracted `transport/` package from root: `Conn` interface wrapping `*nats.Conn`, all subscribe options
+- Root package now contains: message types/interfaces, handlers, middleware, arg system, submitter, error handling, logging
+- `codec/` defines its own `Header = textproto.MIMEHeader` alias (identical to `peanats.Header`) to avoid circular imports
+- Root imports `codec/` (for `arg.go` unmarshal); `codec/` does NOT import root
+- Renamed symbols: `CodecContentType` → `codec.ForContentType`, `CodecHeader` → `codec.ForHeader`, `WrapConnection` → `transport.Wrap`, `NewConnection` → `transport.New`
+- Renamed constants: `ContentTypeJson` → `codec.JSON`, `ContentTypeYaml` → `codec.YAML`, etc.
+- Removed from root: `Publisher`, `Requester`, `Subscriber`, `Connection`, `Drainer`, `Closer` interfaces
+- `publisher.RawPublisher` interface defined at point of consumption; `requester.New` accepts `transport.Conn` directly
+- Fixed queue subscription bug: inverted conditions in `Subscribe()` and `SubscribeHandler()` where queue="" called queue methods
+- Mock generation: `peanats.Connection` mock replaced with `transport.Conn` mock in `.mockery.yaml`
+
 ### Changelog
 
+- 2026-02-09: v0.22.0 — Extracted codec/ and transport/ packages from root; fixed queue subscription bug; resolved naming collisions
 - 2026-02-06: v0.21.0 — Replaced publisher trace spans with events (breaking: removed span-related options)
 - 2025-07-02: Fixed prometheus middleware to preserve Metadatable interface when wrapping messages
 

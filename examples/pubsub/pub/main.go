@@ -10,7 +10,9 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/codec"
 	"github.com/mikluko/peanats/publisher"
+	"github.com/mikluko/peanats/transport"
 )
 
 type message struct {
@@ -29,11 +31,11 @@ func (m *message) Data() []byte {
 }
 
 func (m *message) Header() peanats.Header {
-	return peanats.Header{peanats.HeaderContentType: []string{"application/json"}}
+	return peanats.Header{codec.HeaderContentType: []string{"application/json"}}
 }
 
 func main() {
-	nc, err := peanats.WrapConnection(nats.Connect(nats.DefaultURL))
+	nc, err := transport.Wrap(nats.Connect(nats.DefaultURL))
 	if err != nil {
 		panic(err)
 	}

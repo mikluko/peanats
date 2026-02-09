@@ -1,4 +1,4 @@
-package peanats
+package codec
 
 import (
 	"testing"
@@ -32,13 +32,13 @@ func TestMarshalHeader(t *testing.T) {
 		},
 		{
 			name:   "json",
-			header: Header{HeaderContentType: []string{ContentTypeJson.String()}},
+			header: Header{HeaderContentType: []string{JSON.String()}},
 			model:  model{"bar"},
 			want:   `{"foo":"bar"}`,
 		},
 		{
 			name:   "yaml",
-			header: Header{HeaderContentType: []string{ContentTypeYaml.String()}},
+			header: Header{HeaderContentType: []string{YAML.String()}},
 			model:  model{"bar"},
 			want:   "foo: bar\n",
 		},
@@ -52,7 +52,7 @@ func TestMarshalHeader(t *testing.T) {
 	}
 }
 
-func TestContentTypeHeaderCopy(t *testing.T) {
+func TestTypeFromHeaderCopy(t *testing.T) {
 	tests := []struct {
 		name string
 		dst  Header
@@ -63,18 +63,18 @@ func TestContentTypeHeaderCopy(t *testing.T) {
 			name: "default",
 			dst:  Header{},
 			src:  Header{},
-			want: ContentTypeJson.String(),
+			want: JSON.String(),
 		},
 		{
 			name: "non-default",
-			dst:  Header{HeaderContentType: []string{ContentTypeJson.String()}},
-			src:  Header{HeaderContentType: []string{ContentTypeYaml.String()}},
-			want: ContentTypeYaml.String(),
+			dst:  Header{HeaderContentType: []string{JSON.String()}},
+			src:  Header{HeaderContentType: []string{YAML.String()}},
+			want: YAML.String(),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ContentTypeHeaderCopy(tt.dst, tt.src)
+			TypeFromHeaderCopy(tt.dst, tt.src)
 			assert.Equal(t, tt.want, tt.dst.Get(HeaderContentType))
 		})
 	}

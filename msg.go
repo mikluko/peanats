@@ -7,6 +7,8 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
+
+	"github.com/mikluko/peanats/codec"
 )
 
 type Header = textproto.MIMEHeader
@@ -93,7 +95,7 @@ func (m *msgImpl) RespondHeader(_ context.Context, x any, header Header) error {
 	if header == nil {
 		header = make(Header)
 	}
-	data, err := MarshalHeader(x, header)
+	data, err := codec.MarshalHeader(x, header)
 	if err != nil {
 		return err
 	}

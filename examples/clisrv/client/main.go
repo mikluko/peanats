@@ -9,8 +9,8 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"github.com/mikluko/peanats"
 	"github.com/mikluko/peanats/requester"
+	"github.com/mikluko/peanats/transport"
 )
 
 type request struct {
@@ -27,7 +27,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	conn, err := peanats.WrapConnection(nats.Connect(nats.DefaultURL))
+	conn, err := transport.Wrap(nats.Connect(nats.DefaultURL))
 	if err != nil {
 		panic(err)
 	}

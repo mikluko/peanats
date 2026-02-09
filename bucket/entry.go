@@ -8,6 +8,7 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 
 	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/codec"
 )
 
 type Entry[T any] interface {
@@ -71,7 +72,7 @@ func encodeBucketEntryHeader[T any](h peanats.Header, v *T) ([]byte, error) {
 	if err := w.SetBoundary(bucketEntryHeaderBoundary); err != nil {
 		panic(err)
 	}
-	c, err := peanats.CodecHeader(h)
+	c, err := codec.ForHeader(h)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func decodeBucketEntryHeader[T any](b []byte) (h peanats.Header, v *T, err error
 		return nil, nil, err
 	}
 	h = p.Header
-	c, err := peanats.CodecHeader(h)
+	c, err := codec.ForHeader(h)
 	if err != nil {
 		return nil, nil, err
 	}

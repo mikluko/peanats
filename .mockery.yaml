@@ -11,9 +11,11 @@ packages:
       KeyWatcher:
   github.com/mikluko/peanats:
     interfaces:
-      Connection:
       Msg:
       MsgJetstream:
+  github.com/mikluko/peanats/transport:
+    interfaces:
+      Conn:
   github.com/mikluko/peanats/bucket:
     interfaces:
       Entry:

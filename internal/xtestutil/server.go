@@ -7,7 +7,7 @@ import (
 	natsrv "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 
-	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/transport"
 )
 
 func Server(tb testing.TB) *natsrv.Server {
@@ -27,8 +27,8 @@ func Server(tb testing.TB) *natsrv.Server {
 	return srv
 }
 
-func Conn(tb testing.TB, srv *natsrv.Server, opts ...nats.Option) peanats.Connection {
-	conn := Must(peanats.WrapConnection(Must(nats.Connect(srv.ClientURL(), opts...))))
+func Conn(tb testing.TB, srv *natsrv.Server, opts ...nats.Option) transport.Conn {
+	conn := Must(transport.Wrap(Must(nats.Connect(srv.ClientURL(), opts...))))
 	tb.Cleanup(conn.Close)
 	return conn
 }

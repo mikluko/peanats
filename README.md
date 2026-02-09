@@ -34,11 +34,11 @@ conn.Publish("subject", []byte("data"))
 
 ### Layer 2: Peanats Core
 
-Typed interfaces and middleware system around NATS and JetStream:
+Typed interfaces, middleware system, and transport adapter around NATS and JetStream:
 
 ```go
-pconn := peanats.NewConnection(conn)
-pconn.Publish(ctx, peanats.NewMsg(...)) // Takes peanats.Msg interface
+tc, _ := transport.Wrap(nats.Connect(nats.DefaultURL))
+tc.Publish(ctx, peanats.NewMsg(...)) // Takes peanats.Msg interface
 ```
 
 ### Layer 3: Peanats Packages
@@ -46,8 +46,8 @@ pconn.Publish(ctx, peanats.NewMsg(...)) // Takes peanats.Msg interface
 High-level typed APIs with automatic serialization and content-type detection:
 
 ```go
-pub := publisher.New(pconn)
-pub.Publish(ctx, "subject", MyStruct{}, publisher.WithContentType("application/json"))
+pub := publisher.New(tc)
+pub.Publish(ctx, "subject", MyStruct{}, publisher.WithContentType(codec.JSON))
 ```
 
 **When to use each layer:**
@@ -86,9 +86,8 @@ package main
 import (
     "context"
     "github.com/nats-io/nats.go"
-    "github.com/mikluko/peanats"
     "github.com/mikluko/peanats/publisher"
-    "github.com/mikluko/peanats/subscriber"
+    "github.com/mikluko/peanats/transport"
 )
 
 type MyMessage struct {
@@ -99,31 +98,21 @@ type MyMessage struct {
 func main() {
     // Connect to NATS
     conn, _ := nats.Connect(nats.DefaultURL)
-    pconn := peanats.NewConnection(conn)
-    
+    tc, _ := transport.Wrap(conn)
+
     // Publisher
-    pub := publisher.New(pconn)
+    pub := publisher.New(tc)
     pub.Publish(context.Background(), "events", MyMessage{
         ID: "123", Data: "hello world",
     })
-    
-    // Subscriber
-    sub := subscriber.New[MyMessage](pconn)
-    ch := sub.Subscribe(context.Background(), "events")
-    
-    for msg := range ch {
-        // msg.Payload is typed as MyMessage
-        println("Received:", msg.Payload.Data)
-        msg.Ack(context.Background()) // Acknowledge if using JetStream
-    }
 }
 ```
 
 ### Request/Reply Pattern
 
 ```go
-// Server
-req := requester.New[MyRequest, MyResponse](pconn)
+// Client
+req := requester.New[MyRequest, MyResponse](tc)
 responses := req.Request(ctx, "service.endpoint", MyRequest{Query: "data"})
 
 for response := range responses {
@@ -164,7 +153,7 @@ middleware := prom.Middleware(
 )
 
 // Use with subscriber
-sub := subscriber.New[MyMessage](pconn, 
+sub := subscriber.New[MyMessage](tc,
     subscriber.WithMiddleware(middleware))
 ```
 
@@ -174,10 +163,10 @@ sub := subscriber.New[MyMessage](pconn,
 import "github.com/mikluko/peanats/contrib/trace"
 
 // Add tracing to publisher
-pub := trace.Publisher(publisher.New(pconn))
+pub := trace.Publisher(publisher.New(tc))
 
 // Add tracing to requester
-req := trace.Requester(requester.New[MyReq, MyResp](pconn))
+req := trace.Requester(requester.New[MyReq, MyResp](tc))
 ```
 
 ### Structured Logging

@@ -6,15 +6,16 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/nats-io/nats.go"
+
 	"github.com/mikluko/peanats"
 	"github.com/mikluko/peanats/contrib/logging"
 	"github.com/mikluko/peanats/subscriber"
-
-	"github.com/nats-io/nats.go"
+	"github.com/mikluko/peanats/transport"
 )
 
 func main() {
-	nc, err := peanats.WrapConnection(nats.Connect(nats.DefaultURL))
+	nc, err := transport.Wrap(nats.Connect(nats.DefaultURL))
 	if err != nil {
 		panic(err)
 	}
