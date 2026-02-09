@@ -19,12 +19,11 @@ import (
 // dispatch/wait cycle.
 //
 // If the context passed to Wait expires before all tasks complete, Wait returns
-// the context error immediately. A background goroutine continues to wait for
-// the remaining tasks — its lifetime is bounded by task completion, not by the
-// Dispatcher. In practice, tasks that respect their context will finish shortly
-// after cancellation, allowing the goroutine to exit. Errors from tasks that
-// complete after Wait returns are retained and available to a subsequent Wait
-// call.
+// the context error joined with any errors already collected from completed
+// tasks. A background goroutine continues to wait for the remaining tasks — its
+// lifetime is bounded by task completion, not by the Dispatcher. In practice,
+// tasks that respect their context will finish shortly after cancellation,
+// allowing the goroutine to exit.
 //
 // # Expected usage
 //
@@ -95,6 +94,10 @@ func (d *dispatcherImpl) Wait(ctx context.Context) error {
 		d.mu.Unlock()
 		return err
 	case <-ctx.Done():
-		return ctx.Err()
+		d.mu.Lock()
+		err := errors.Join(append(d.errs, ctx.Err())...)
+		d.errs = nil
+		d.mu.Unlock()
+		return err
 	}
 }

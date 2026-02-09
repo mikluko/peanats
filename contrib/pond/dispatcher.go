@@ -59,6 +59,10 @@ func (d *dispatcherImpl) Wait(ctx context.Context) error {
 		d.mu.Unlock()
 		return err
 	case <-ctx.Done():
-		return ctx.Err()
+		d.mu.Lock()
+		err := errors.Join(append(d.errs, ctx.Err())...)
+		d.errs = nil
+		d.mu.Unlock()
+		return err
 	}
 }

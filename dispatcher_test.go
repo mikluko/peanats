@@ -48,6 +48,25 @@ func TestDispatcher(t *testing.T) {
 		err := d.Wait(ctx)
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 	})
+	t.Run("context timeout preserves collected errors", func(t *testing.T) {
+		d := peanats.NewDispatcher()
+		errTask := errors.New("task error")
+		// Fast task that fails before the timeout
+		d.Dispatch(func() error { return errTask })
+		// Slow task that outlives the timeout
+		d.Dispatch(func() error {
+			time.Sleep(time.Second)
+			return nil
+		})
+		// Give fast task time to complete and record its error
+		time.Sleep(50 * time.Millisecond)
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
+		defer cancel()
+		err := d.Wait(ctx)
+		// Both the context error and the task error must be present
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
+		assert.ErrorIs(t, err, errTask)
+	})
 	t.Run("concurrent dispatches", func(t *testing.T) {
 		d := peanats.NewDispatcher()
 		const n = 100
