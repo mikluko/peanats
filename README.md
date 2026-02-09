@@ -210,6 +210,8 @@ Peanats automatically selects serialization format based on message content-type
 
 This project is developed with substantial AI assistance ([Claude Code](https://docs.anthropic.com/en/docs/claude-code)). Every design decision, interface contract, and architectural trade-off is human-directed and human-reviewed. AI accelerates implementation; it does not drive it.
 
+Contributions that use AI tooling are welcome — under the same standard. If you can't explain why the code exists, it doesn't belong here.
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
