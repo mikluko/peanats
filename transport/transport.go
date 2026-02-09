@@ -1,56 +1,43 @@
-package peanats
+package transport
 
 import (
 	"context"
 	"errors"
 
 	"github.com/nats-io/nats.go"
+
+	"github.com/mikluko/peanats"
 )
 
-func WrapConnection(conn *nats.Conn, errs ...error) (Connection, error) {
-	if err := errors.Join(errs...); err != nil {
-		return nil, err
-	}
-	return NewConnection(conn), nil
-}
-
-type Publisher interface {
-	Publish(ctx context.Context, msg Msg) error
-}
-
-type Requester interface {
-	Request(ctx context.Context, msg Msg) (Msg, error)
-}
-
+// Unsubscriber represents something that can be unsubscribed.
 type Unsubscriber interface {
 	Unsubscribe() error
 }
 
+// Subscription represents a message subscription that can pull messages
+// and be unsubscribed.
 type Subscription interface {
 	Unsubscriber
-	NextMsg(ctx context.Context) (Msg, error)
+	NextMsg(ctx context.Context) (peanats.Msg, error)
 }
 
-type Subscriber interface {
+// Conn provides a typed message abstraction over a raw NATS connection.
+type Conn interface {
+	Publish(ctx context.Context, msg peanats.Msg) error
+	Request(ctx context.Context, msg peanats.Msg) (peanats.Msg, error)
 	Subscribe(ctx context.Context, subj string, opts ...SubscribeOption) (Subscription, error)
-	SubscribeChan(ctx context.Context, subj string, ch chan Msg, opts ...SubscribeChanOption) (Unsubscriber, error)
-	SubscribeHandler(ctx context.Context, subj string, handler MsgHandler, opts ...SubscribeHandlerOption) (Unsubscriber, error)
-}
-
-type Drainer interface {
+	SubscribeChan(ctx context.Context, subj string, ch chan peanats.Msg, opts ...SubscribeChanOption) (Unsubscriber, error)
+	SubscribeHandler(ctx context.Context, subj string, handler peanats.MsgHandler, opts ...SubscribeHandlerOption) (Unsubscriber, error)
 	Drain() error
-}
-
-type Closer interface {
 	Close()
 }
 
-type Connection interface {
-	Publisher
-	Requester
-	Subscriber
-	Drainer
-	Closer
+// Wrap wraps a *nats.Conn (and optional connection error) into a transport.Conn.
+func Wrap(conn *nats.Conn, errs ...error) (Conn, error) {
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
+	}
+	return New(conn), nil
 }
 
 type upstream interface {
@@ -68,24 +55,22 @@ type upstream interface {
 
 var _ upstream = (*nats.Conn)(nil)
 
-func upstreamHandler(ctx context.Context, msgh MsgHandler, errh ErrorHandler, subm Submitter) nats.MsgHandler {
+func upstreamHandler(ctx context.Context, msgh peanats.MsgHandler, disp peanats.Dispatcher) nats.MsgHandler {
 	return func(msg *nats.Msg) {
-		subm.Submit(func() {
+		disp.Dispatch(func() error {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			err := msgh.HandleMsg(ctx, NewMsg(msg))
-			if err != nil {
-				errh.HandleError(ctx, err)
-			}
+			return msgh.HandleMsg(ctx, peanats.NewMsg(msg))
 		})
 	}
 }
 
-func NewConnection(conn upstream) Connection {
-	return &connectionImpl{conn}
+// New creates a Conn from an upstream NATS connection.
+func New(conn upstream) Conn {
+	return &connImpl{conn}
 }
 
-type connectionImpl struct {
+type connImpl struct {
 	nc upstream
 }
 
@@ -93,7 +78,7 @@ type replier interface {
 	Reply() string
 }
 
-func (c *connectionImpl) Publish(ctx context.Context, msg Msg) error {
+func (c *connImpl) Publish(_ context.Context, msg peanats.Msg) error {
 	m := nats.Msg{
 		Subject: msg.Subject(),
 		Header:  nats.Header(msg.Header()),
@@ -105,7 +90,7 @@ func (c *connectionImpl) Publish(ctx context.Context, msg Msg) error {
 	return c.nc.PublishMsg(&m)
 }
 
-func (c *connectionImpl) Request(ctx context.Context, msg Msg) (Msg, error) {
+func (c *connImpl) Request(ctx context.Context, msg peanats.Msg) (peanats.Msg, error) {
 	res, err := c.nc.RequestMsgWithContext(ctx, &nats.Msg{
 		Subject: msg.Subject(),
 		Header:  nats.Header(msg.Header()),
@@ -114,30 +99,32 @@ func (c *connectionImpl) Request(ctx context.Context, msg Msg) (Msg, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewMsg(res), nil
+	return peanats.NewMsg(res), nil
 }
 
-func (c *connectionImpl) Drain() error {
+func (c *connImpl) Drain() error {
 	return c.nc.Drain()
 }
 
-func (c *connectionImpl) Close() {
+func (c *connImpl) Close() {
 	c.nc.Close()
 }
 
+// SubscribeOption configures synchronous subscriptions.
 type SubscribeOption func(*subscribeParams)
 
 type subscribeParams struct {
 	queue string
 }
 
+// SubscribeQueue sets the queue group for a subscription.
 func SubscribeQueue(name string) SubscribeOption {
 	return func(p *subscribeParams) {
 		p.queue = name
 	}
 }
 
-func (c *connectionImpl) Subscribe(ctx context.Context, subj string, opts ...SubscribeOption) (Subscription, error) {
+func (c *connImpl) Subscribe(_ context.Context, subj string, opts ...SubscribeOption) (Subscription, error) {
 	p := subscribeParams{}
 	for _, o := range opts {
 		o(&p)
@@ -147,9 +134,9 @@ func (c *connectionImpl) Subscribe(ctx context.Context, subj string, opts ...Sub
 		err error
 	)
 	if p.queue != "" {
-		sub, err = c.nc.SubscribeSync(subj)
-	} else {
 		sub, err = c.nc.QueueSubscribeSync(subj, p.queue)
+	} else {
+		sub, err = c.nc.SubscribeSync(subj)
 	}
 	if err != nil {
 		return nil, err
@@ -157,76 +144,73 @@ func (c *connectionImpl) Subscribe(ctx context.Context, subj string, opts ...Sub
 	return &subscriptionImpl{sub}, nil
 }
 
+// SubscribeHandlerOption configures handler-based subscriptions.
 type SubscribeHandlerOption func(*subscribeHandlerParams)
 
 type subscribeHandlerParams struct {
 	queue string
-	subm  Submitter
-	errh  ErrorHandler
+	disp  peanats.Dispatcher
 }
 
-func SubscribeHandlerSubmitter(subm Submitter) SubscribeHandlerOption {
+// SubscribeHandlerDispatcher sets the dispatcher for handler subscriptions.
+func SubscribeHandlerDispatcher(disp peanats.Dispatcher) SubscribeHandlerOption {
 	return func(p *subscribeHandlerParams) {
-		p.subm = subm
+		p.disp = disp
 	}
 }
 
-func SubscribeHandlerErrorHandler(errh ErrorHandler) SubscribeHandlerOption {
+// SubscribeHandlerQueue sets the queue group for handler subscriptions.
+func SubscribeHandlerQueue(name string) SubscribeHandlerOption {
 	return func(p *subscribeHandlerParams) {
-		p.errh = errh
+		p.queue = name
 	}
 }
 
-func (c *connectionImpl) SubscribeHandler(ctx context.Context, subj string, h MsgHandler, opts ...SubscribeHandlerOption) (Unsubscriber, error) {
+func (c *connImpl) SubscribeHandler(ctx context.Context, subj string, h peanats.MsgHandler, opts ...SubscribeHandlerOption) (Unsubscriber, error) {
 	p := subscribeHandlerParams{
-		subm: DefaultSubmitter,
-		errh: DefaultErrorHandler,
+		disp: peanats.DefaultDispatcher,
 	}
 	for _, o := range opts {
 		o(&p)
 	}
 	if p.queue != "" {
-		return c.nc.Subscribe(subj, upstreamHandler(ctx, h, p.errh, p.subm))
+		return c.nc.QueueSubscribe(subj, p.queue, upstreamHandler(ctx, h, p.disp))
 	} else {
-		return c.nc.QueueSubscribe(subj, p.queue, upstreamHandler(ctx, h, p.errh, p.subm))
+		return c.nc.Subscribe(subj, upstreamHandler(ctx, h, p.disp))
 	}
 }
 
-func (c *connectionImpl) mirror(mch chan Msg) chan *nats.Msg {
+func (c *connImpl) mirror(mch chan peanats.Msg) chan *nats.Msg {
 	nch := make(chan *nats.Msg, cap(mch))
 	go func() {
 		defer func() {
-			// Recover from "send on closed channel" panic that occurs when
-			// the consumer closes mch while messages are still being received.
-			// Drain remaining messages from nch to avoid blocking the NATS library.
-			//
-			// TODO: This is technical debt. A proper solution using a done channel
-			// would require API changes to SubscribeChan. Postponed for now.
 			if recover() != nil {
 				for range nch {
 				}
 			}
 		}()
 		for msg := range nch {
-			mch <- NewMsg(msg)
+			mch <- peanats.NewMsg(msg)
 		}
 	}()
 	return nch
 }
 
+// SubscribeChanOption configures channel-based subscriptions.
 type SubscribeChanOption func(*subscribeChanParams)
 
 type subscribeChanParams struct {
 	queue string
 }
 
+// SubscribeChanQueue sets the queue group for channel subscriptions.
 func SubscribeChanQueue(name string) SubscribeChanOption {
 	return func(p *subscribeChanParams) {
 		p.queue = name
 	}
 }
 
-func (c *connectionImpl) SubscribeChan(_ context.Context, subj string, ch chan Msg, opts ...SubscribeChanOption) (Unsubscriber, error) {
+func (c *connImpl) SubscribeChan(_ context.Context, subj string, ch chan peanats.Msg, opts ...SubscribeChanOption) (Unsubscriber, error) {
 	p := subscribeChanParams{}
 	for _, o := range opts {
 		o(&p)
@@ -250,12 +234,12 @@ type subscriptionImpl struct {
 	sub *nats.Subscription
 }
 
-func (s *subscriptionImpl) NextMsg(ctx context.Context) (Msg, error) {
+func (s *subscriptionImpl) NextMsg(ctx context.Context) (peanats.Msg, error) {
 	msg, err := s.sub.NextMsgWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return NewMsg(msg), nil
+	return peanats.NewMsg(msg), nil
 }
 
 func (s *subscriptionImpl) Unsubscribe() error {

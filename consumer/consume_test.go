@@ -10,6 +10,7 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 
 	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/codec"
 	"github.com/mikluko/peanats/consumer"
 	"github.com/mikluko/peanats/contrib/pond"
 	"github.com/mikluko/peanats/internal/xtestutil"
@@ -17,19 +18,19 @@ import (
 
 func BenchmarkConsume(b *testing.B) {
 	b.Run("single/json", func(b *testing.B) {
-		benchmarkConsume(b, xtestutil.Must(peanats.CodecContentType(peanats.ContentTypeJson)))
+		benchmarkConsume(b, xtestutil.Must(codec.ForContentType(codec.JSON)))
 	})
 	b.Run("single/msgpack", func(b *testing.B) {
-		benchmarkConsume(b, xtestutil.Must(peanats.CodecContentType(peanats.ContentTypeMsgpack)))
+		benchmarkConsume(b, xtestutil.Must(codec.ForContentType(codec.Msgpack)))
 	})
 	// worker pool is expected to be slower vs single-threaded on no-op benchmark handler
 	b.Run("pool/json", func(b *testing.B) {
-		benchmarkConsume(b, xtestutil.Must(peanats.CodecContentType(peanats.ContentTypeJson)),
-			consumer.ConsumeSubmitter(pond.Submitter(250)))
+		benchmarkConsume(b, xtestutil.Must(codec.ForContentType(codec.JSON)),
+			consumer.ConsumeDispatcher(pond.Dispatcher(250)))
 	})
 	b.Run("pool/msgpack", func(b *testing.B) {
-		benchmarkConsume(b, xtestutil.Must(peanats.CodecContentType(peanats.ContentTypeMsgpack)),
-			consumer.ConsumeSubmitter(pond.Submitter(250)))
+		benchmarkConsume(b, xtestutil.Must(codec.ForContentType(codec.Msgpack)),
+			consumer.ConsumeDispatcher(pond.Dispatcher(250)))
 	})
 }
 
@@ -40,7 +41,7 @@ type benchmarkConsumeArgument struct {
 	Object    string `json:"object"`
 }
 
-func benchmarkConsume(b *testing.B, codec peanats.Codec, opts ...consumer.ConsumeOption) {
+func benchmarkConsume(b *testing.B, cdc codec.Codec, opts ...consumer.ConsumeOption) {
 	ns := xtestutil.Server(b)
 
 	nc, err := nats.Connect(ns.ClientURL())
@@ -82,12 +83,12 @@ func benchmarkConsume(b *testing.B, codec peanats.Codec, opts ...consumer.Consum
 			Predicate: "had",
 			Object:    "a dog",
 		}
-		p, err := codec.Marshal(x)
+		p, err := cdc.Marshal(x)
 		if err != nil {
 			b.Fatal(err)
 		}
 		h := make(peanats.Header)
-		codec.SetContentType(h)
+		cdc.SetContentType(h)
 		err = nc.PublishMsg(&nats.Msg{
 			Subject: subj,
 			Header:  nats.Header(h),

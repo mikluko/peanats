@@ -2,7 +2,10 @@ package trace
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/textproto"
 
 	"github.com/mikluko/peanats"
 	"github.com/mikluko/peanats/requester"
@@ -37,11 +40,30 @@ func RequesterWithAttributes[RQ, RS any](attrs ...attribute.KeyValue) RequesterO
 	}
 }
 
+// RequesterWithEventHeaders enables adding message headers as span event attributes
+func RequesterWithEventHeaders[RQ, RS any]() RequesterOption[RQ, RS] {
+	return func(req *tracingRequester[RQ, RS]) {
+		req.eventHeaders = true
+	}
+}
+
+// RequesterWithEventData enables adding message data as span event attributes, truncated to the given length.
+// A zero or negative truncateAt means no truncation.
+func RequesterWithEventData[RQ, RS any](truncateAt int) RequesterOption[RQ, RS] {
+	return func(req *tracingRequester[RQ, RS]) {
+		req.eventData = true
+		req.truncateDataAt = truncateAt
+	}
+}
+
 type tracingRequester[RQ, RS any] struct {
 	requester.Requester[RQ, RS]
-	tracer   trace.Tracer
-	spanName string
-	attrs    []attribute.KeyValue
+	tracer         trace.Tracer
+	spanName       string
+	attrs          []attribute.KeyValue
+	eventHeaders   bool
+	eventData      bool
+	truncateDataAt int
 }
 
 // NewRequester creates a new trace-aware requester that implements requester.Requester
@@ -55,6 +77,35 @@ func NewRequester[RQ, RS any](req requester.Requester[RQ, RS], opts ...Requester
 		opt(res)
 	}
 	return res
+}
+
+// buildMessageEventAttrs builds span event attributes from headers and data.
+func buildMessageEventAttrs(header peanats.Header, data any, eventHeaders, eventData bool, truncateAt int) []attribute.KeyValue {
+	var attrs []attribute.KeyValue
+	if eventHeaders && header != nil {
+		for name, values := range header {
+			name = textproto.CanonicalMIMEHeaderKey(name)
+			for _, v := range values {
+				attrs = append(attrs, attribute.String(fmt.Sprintf("nats.header.%s", name), v))
+			}
+		}
+	}
+	if eventData && data != nil {
+		b, err := json.Marshal(data)
+		if err == nil {
+			dataFull := string(b)
+			dataTrunc := dataFull
+			if truncateAt > 0 && len(dataFull) > truncateAt {
+				dataTrunc = dataFull[:truncateAt]
+			}
+			attrs = append(attrs,
+				attribute.String("nats.data", dataTrunc),
+				attribute.Int("nats.data_length", len(dataFull)),
+				attribute.Bool("nats.data_truncated", len(dataFull) != len(dataTrunc)),
+			)
+		}
+	}
+	return attrs
 }
 
 // Request sends a request with trace context propagation
@@ -71,12 +122,22 @@ func (r *tracingRequester[RQ, RS]) Request(ctx context.Context, subject string, 
 	header := make(peanats.Header)
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(header))
 
+	// Emit request event
+	if attrs := buildMessageEventAttrs(header, data, r.eventHeaders, r.eventData, r.truncateDataAt); len(attrs) > 0 {
+		span.AddEvent("nats.request", trace.WithAttributes(attrs...))
+	}
+
 	// Execute the request with trace headers
 	resp, err := r.Requester.Request(ctx, subject, data, append(opts, requester.RequestHeader(header))...)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
+	}
+
+	// Emit response event
+	if attrs := buildMessageEventAttrs(resp.Header(), resp.Value(), r.eventHeaders, r.eventData, r.truncateDataAt); len(attrs) > 0 {
+		span.AddEvent("nats.response", trace.WithAttributes(attrs...))
 	}
 
 	return resp, nil
@@ -95,6 +156,11 @@ func (r *tracingRequester[RQ, RS]) ResponseReceiver(ctx context.Context, subject
 	header := make(peanats.Header)
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(header))
 
+	// Emit request event
+	if attrs := buildMessageEventAttrs(header, data, r.eventHeaders, r.eventData, r.truncateDataAt); len(attrs) > 0 {
+		span.AddEvent("nats.request", trace.WithAttributes(attrs...))
+	}
+
 	// Create response receiver with trace headers
 	reqOpts := []requester.RequestOption{requester.RequestHeader(header)}
 	receiver, err := r.Requester.ResponseReceiver(ctx, subject, data, append(opts, requester.ResponseReceiverRequestOptions(reqOpts...))...)
@@ -109,13 +175,19 @@ func (r *tracingRequester[RQ, RS]) ResponseReceiver(ctx context.Context, subject
 		ResponseReceiver: receiver,
 		span:             span,
 		tracer:           r.tracer,
+		eventHeaders:     r.eventHeaders,
+		eventData:        r.eventData,
+		truncateDataAt:   r.truncateDataAt,
 	}, nil
 }
 
 type tracingResponseReceiver[T any] struct {
 	requester.ResponseReceiver[T]
-	span   trace.Span
-	tracer trace.Tracer
+	span           trace.Span
+	tracer         trace.Tracer
+	eventHeaders   bool
+	eventData      bool
+	truncateDataAt int
 }
 
 // Next retrieves the next response with trace context extraction
@@ -133,6 +205,11 @@ func (r *tracingResponseReceiver[T]) Next(ctx context.Context) (requester.Respon
 	if resp.Header() != nil {
 		propagator := otel.GetTextMapPropagator()
 		_ = propagator.Extract(ctx, propagation.HeaderCarrier(resp.Header()))
+	}
+
+	// Emit response event
+	if attrs := buildMessageEventAttrs(resp.Header(), resp.Value(), r.eventHeaders, r.eventData, r.truncateDataAt); len(attrs) > 0 {
+		r.span.AddEvent("nats.response", trace.WithAttributes(attrs...))
 	}
 
 	return resp, nil

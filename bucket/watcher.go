@@ -135,28 +135,19 @@ func (f EntryHandlerFunc[T]) HandleEntry(ctx context.Context, e Entry[T]) error 
 type WatchOption func(params *watchParams)
 
 type watchParams struct {
-	subm peanats.Submitter
-	errh peanats.ErrorHandler
+	disp peanats.Dispatcher
 }
 
-// WatchSubmitter sets the workload submitter.
-func WatchSubmitter(subm peanats.Submitter) WatchOption {
+// WatchDispatcher sets the dispatcher.
+func WatchDispatcher(disp peanats.Dispatcher) WatchOption {
 	return func(p *watchParams) {
-		p.subm = subm
-	}
-}
-
-// WatchErrorHandler sets the workload submitter.
-func WatchErrorHandler(errh peanats.ErrorHandler) WatchOption {
-	return func(p *watchParams) {
-		p.errh = errh
+		p.disp = disp
 	}
 }
 
 func Watch[T any](ctx context.Context, w Watcher[T], h EntryHandler[T], opts ...WatchOption) error {
 	params := watchParams{
-		subm: peanats.DefaultSubmitter,
-		errh: peanats.DefaultErrorHandler,
+		disp: peanats.DefaultDispatcher,
 	}
 	for _, opt := range opts {
 		opt(&params)
@@ -172,11 +163,8 @@ func Watch[T any](ctx context.Context, w Watcher[T], h EntryHandler[T], opts ...
 			}
 			return err
 		}
-		params.subm.Submit(func() {
-			err := h.HandleEntry(ctx, e)
-			if err != nil {
-				params.errh.HandleError(ctx, err)
-			}
+		params.disp.Dispatch(func() error {
+			return h.HandleEntry(ctx, e)
 		})
 	}
 }

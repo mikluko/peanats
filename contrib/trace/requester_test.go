@@ -336,3 +336,289 @@ func TestTracingResponseReceiver_NextWithSkip(t *testing.T) {
 	span := spans[0]
 	assert.Len(t, span.Events, 0) // No error events for ErrSkip
 }
+
+func findEventByName(events []sdktrace.Event, name string) *sdktrace.Event {
+	for i := range events {
+		if events[i].Name == name {
+			return &events[i]
+		}
+	}
+	return nil
+}
+
+func findEventAttr(event *sdktrace.Event, key attribute.Key) *attribute.KeyValue {
+	if event == nil {
+		return nil
+	}
+	for i := range event.Attributes {
+		if event.Attributes[i].Key == key {
+			return &event.Attributes[i]
+		}
+	}
+	return nil
+}
+
+func TestTracingRequester_RequestWithEventHeaders(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	tracer := tp.Tracer("test")
+	mockReq := requestermock.NewRequester[testRequest, testResponse](t)
+	mockResp := requestermock.NewResponse[testResponse](t)
+
+	ctx := context.Background()
+	subject := "test.subject"
+	reqData := &testRequest{Message: "hello"}
+	respData := &testResponse{Reply: "world"}
+
+	mockResp.EXPECT().Header().Return(peanats.Header{"X-Custom": []string{"resp-val"}}).Maybe()
+	mockResp.EXPECT().Value().Return(respData).Maybe()
+
+	mockReq.EXPECT().Request(
+		mock.Anything, subject, reqData, mock.Anything,
+	).Return(mockResp, nil)
+
+	req := NewRequester(mockReq,
+		RequesterWithTracer[testRequest, testResponse](tracer),
+		RequesterWithEventHeaders[testRequest, testResponse](),
+	)
+
+	resp, err := req.Request(ctx, subject, reqData)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	tp.ForceFlush(ctx)
+	spans := exporter.GetSpans()
+	assert.Len(t, spans, 1)
+
+	span := spans[0]
+
+	// Request event should have traceparent header from propagation
+	reqEvt := findEventByName(span.Events, "nats.request")
+	assert.NotNil(t, reqEvt, "expected nats.request event")
+	tp_attr := findEventAttr(reqEvt, "nats.header.Traceparent")
+	assert.NotNil(t, tp_attr, "expected Traceparent header attribute")
+
+	// Response event should have the X-Custom header
+	respEvt := findEventByName(span.Events, "nats.response")
+	assert.NotNil(t, respEvt, "expected nats.response event")
+	customAttr := findEventAttr(respEvt, "nats.header.X-Custom")
+	assert.NotNil(t, customAttr, "expected X-Custom header attribute")
+	assert.Equal(t, "resp-val", customAttr.Value.AsString())
+}
+
+func TestTracingRequester_RequestWithEventData(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	tracer := tp.Tracer("test")
+	mockReq := requestermock.NewRequester[testRequest, testResponse](t)
+	mockResp := requestermock.NewResponse[testResponse](t)
+
+	ctx := context.Background()
+	subject := "test.subject"
+	reqData := &testRequest{Message: "hello"}
+	respData := &testResponse{Reply: "world"}
+
+	mockResp.EXPECT().Header().Return(nil).Maybe()
+	mockResp.EXPECT().Value().Return(respData).Maybe()
+
+	mockReq.EXPECT().Request(
+		mock.Anything, subject, reqData, mock.Anything,
+	).Return(mockResp, nil)
+
+	req := NewRequester(mockReq,
+		RequesterWithTracer[testRequest, testResponse](tracer),
+		RequesterWithEventData[testRequest, testResponse](0), // no truncation
+	)
+
+	resp, err := req.Request(ctx, subject, reqData)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	tp.ForceFlush(ctx)
+	spans := exporter.GetSpans()
+	assert.Len(t, spans, 1)
+
+	span := spans[0]
+
+	// Request event should contain data
+	reqEvt := findEventByName(span.Events, "nats.request")
+	assert.NotNil(t, reqEvt)
+	dataAttr := findEventAttr(reqEvt, "nats.data")
+	assert.NotNil(t, dataAttr)
+	assert.Contains(t, dataAttr.Value.AsString(), `"Message":"hello"`)
+	lenAttr := findEventAttr(reqEvt, "nats.data_length")
+	assert.NotNil(t, lenAttr)
+	truncAttr := findEventAttr(reqEvt, "nats.data_truncated")
+	assert.NotNil(t, truncAttr)
+	assert.False(t, truncAttr.Value.AsBool())
+
+	// Response event should contain data
+	respEvt := findEventByName(span.Events, "nats.response")
+	assert.NotNil(t, respEvt)
+	respDataAttr := findEventAttr(respEvt, "nats.data")
+	assert.NotNil(t, respDataAttr)
+	assert.Contains(t, respDataAttr.Value.AsString(), `"Reply":"world"`)
+}
+
+func TestTracingRequester_RequestWithEventDataTruncation(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	tracer := tp.Tracer("test")
+	mockReq := requestermock.NewRequester[testRequest, testResponse](t)
+	mockResp := requestermock.NewResponse[testResponse](t)
+
+	ctx := context.Background()
+	subject := "test.subject"
+	reqData := &testRequest{Message: "hello"}
+	respData := &testResponse{Reply: "world"}
+
+	mockResp.EXPECT().Header().Return(nil).Maybe()
+	mockResp.EXPECT().Value().Return(respData).Maybe()
+
+	mockReq.EXPECT().Request(
+		mock.Anything, subject, reqData, mock.Anything,
+	).Return(mockResp, nil)
+
+	req := NewRequester(mockReq,
+		RequesterWithTracer[testRequest, testResponse](tracer),
+		RequesterWithEventData[testRequest, testResponse](5), // truncate to 5 chars
+	)
+
+	resp, err := req.Request(ctx, subject, reqData)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	tp.ForceFlush(ctx)
+	spans := exporter.GetSpans()
+	assert.Len(t, spans, 1)
+
+	span := spans[0]
+
+	reqEvt := findEventByName(span.Events, "nats.request")
+	assert.NotNil(t, reqEvt)
+	dataAttr := findEventAttr(reqEvt, "nats.data")
+	assert.NotNil(t, dataAttr)
+	assert.Len(t, dataAttr.Value.AsString(), 5)
+	truncAttr := findEventAttr(reqEvt, "nats.data_truncated")
+	assert.NotNil(t, truncAttr)
+	assert.True(t, truncAttr.Value.AsBool())
+}
+
+func TestTracingRequester_ResponseReceiverWithEvents(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	tracer := tp.Tracer("test")
+	mockReq := requestermock.NewRequester[testRequest, testResponse](t)
+	mockReceiver := requestermock.NewResponseReceiver[testResponse](t)
+	mockResp := requestermock.NewResponse[testResponse](t)
+
+	ctx := context.Background()
+	subject := "test.subject"
+	reqData := &testRequest{Message: "stream-req"}
+	respData := &testResponse{Reply: "stream-resp"}
+
+	mockReq.EXPECT().ResponseReceiver(
+		mock.Anything, subject, reqData, mock.Anything,
+	).Return(mockReceiver, nil)
+
+	mockResp.EXPECT().Header().Return(peanats.Header{"X-Stream": []string{"1"}}).Maybe()
+	mockResp.EXPECT().Value().Return(respData).Maybe()
+
+	mockReceiver.EXPECT().Next(mock.Anything).Return(mockResp, nil).Once()
+	mockReceiver.EXPECT().Next(mock.Anything).Return(nil, requester.ErrOver).Once()
+	mockReceiver.EXPECT().Stop().Return(nil)
+
+	req := NewRequester(mockReq,
+		RequesterWithTracer[testRequest, testResponse](tracer),
+		RequesterWithEventHeaders[testRequest, testResponse](),
+		RequesterWithEventData[testRequest, testResponse](0),
+	)
+
+	receiver, err := req.ResponseReceiver(ctx, subject, reqData)
+	assert.NoError(t, err)
+
+	// First response
+	resp, err := receiver.Next(context.Background())
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	// End of stream
+	_, err = receiver.Next(context.Background())
+	assert.ErrorIs(t, err, requester.ErrOver)
+
+	err = receiver.Stop()
+	assert.NoError(t, err)
+
+	tp.ForceFlush(ctx)
+	spans := exporter.GetSpans()
+	assert.Len(t, spans, 1)
+
+	span := spans[0]
+
+	// Should have request event (from ResponseReceiver call) and response event (from Next call)
+	reqEvt := findEventByName(span.Events, "nats.request")
+	assert.NotNil(t, reqEvt, "expected nats.request event")
+	// Request event should have data
+	reqDataAttr := findEventAttr(reqEvt, "nats.data")
+	assert.NotNil(t, reqDataAttr)
+	assert.Contains(t, reqDataAttr.Value.AsString(), `"Message":"stream-req"`)
+
+	respEvt := findEventByName(span.Events, "nats.response")
+	assert.NotNil(t, respEvt, "expected nats.response event")
+	// Response event should have headers
+	streamAttr := findEventAttr(respEvt, "nats.header.X-Stream")
+	assert.NotNil(t, streamAttr)
+	assert.Equal(t, "1", streamAttr.Value.AsString())
+	// Response event should have data
+	respDataAttr := findEventAttr(respEvt, "nats.data")
+	assert.NotNil(t, respDataAttr)
+	assert.Contains(t, respDataAttr.Value.AsString(), `"Reply":"stream-resp"`)
+}
+
+func TestTracingRequester_NoEventsWithoutOptions(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	tracer := tp.Tracer("test")
+	mockReq := requestermock.NewRequester[testRequest, testResponse](t)
+	mockResp := requestermock.NewResponse[testResponse](t)
+
+	ctx := context.Background()
+	subject := "test.subject"
+	reqData := &testRequest{Message: "hello"}
+	respData := &testResponse{Reply: "world"}
+
+	mockResp.EXPECT().Header().Return(peanats.Header{"Content-Type": []string{"application/json"}}).Maybe()
+	mockResp.EXPECT().Value().Return(respData).Maybe()
+
+	mockReq.EXPECT().Request(
+		mock.Anything, subject, reqData, mock.Anything,
+	).Return(mockResp, nil)
+
+	// No event options — should produce no events
+	req := NewRequester(mockReq,
+		RequesterWithTracer[testRequest, testResponse](tracer),
+	)
+
+	_, err := req.Request(ctx, subject, reqData)
+	assert.NoError(t, err)
+
+	tp.ForceFlush(ctx)
+	spans := exporter.GetSpans()
+	assert.Len(t, spans, 1)
+	assert.Empty(t, spans[0].Events, "no events should be emitted without event options")
+}

@@ -4,13 +4,20 @@ import (
 	"context"
 
 	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/codec"
 )
+
+// RawPublisher is the dependency interface for low-level message publishing.
+// transport.Conn satisfies this via structural typing.
+type RawPublisher interface {
+	Publish(context.Context, peanats.Msg) error
+}
 
 type PublishOption func(*PublishParams)
 
 type PublishParams struct {
 	Header      peanats.Header
-	ContentType peanats.ContentType
+	ContentType codec.ContentType
 }
 
 // WithHeader sets the header for the message.
@@ -22,7 +29,7 @@ func WithHeader(header peanats.Header) PublishOption {
 }
 
 // WithContentType sets the content type for the message.
-func WithContentType(c peanats.ContentType) PublishOption {
+func WithContentType(c codec.ContentType) PublishOption {
 	return func(p *PublishParams) {
 		p.ContentType = c
 	}
@@ -32,28 +39,28 @@ type Publisher interface {
 	Publish(context.Context, string, any, ...PublishOption) error
 }
 
-func New(pub peanats.Publisher) Publisher {
+func New(pub RawPublisher) Publisher {
 	return &publisherImpl{pub: pub}
 }
 
 type publisherImpl struct {
-	pub peanats.Publisher
+	pub RawPublisher
 }
 
 func (i *publisherImpl) Publish(ctx context.Context, subj string, v any, opts ...PublishOption) error {
 	p := PublishParams{
 		Header:      make(peanats.Header),
-		ContentType: peanats.ContentTypeJson,
+		ContentType: codec.JSON,
 	}
 	for _, o := range opts {
 		o(&p)
 	}
-	codec, err := peanats.CodecContentType(p.ContentType)
+	c, err := codec.ForContentType(p.ContentType)
 	if err != nil {
 		return err
 	}
-	codec.SetContentType(p.Header)
-	data, err := codec.Marshal(v)
+	c.SetContentType(p.Header)
+	data, err := c.Marshal(v)
 	if err != nil {
 		return err
 	}

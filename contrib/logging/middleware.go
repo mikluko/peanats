@@ -8,7 +8,7 @@ import (
 )
 
 // AccessLogMiddleware is a middleware that logs the message subject and headers
-func AccessLogMiddleware(log peanats.Logger) peanats.MsgMiddleware {
+func AccessLogMiddleware(log Logger) peanats.MsgMiddleware {
 	return func(h peanats.MsgHandler) peanats.MsgHandler {
 		return peanats.MsgHandlerFunc(func(ctx context.Context, m peanats.Msg) error {
 			t := time.Now()
@@ -23,7 +23,7 @@ func AccessLogMiddleware(log peanats.Logger) peanats.MsgMiddleware {
 }
 
 // ErrorLogMiddleware is a middleware that logs errors encountered while handling messages
-func ErrorLogMiddleware(log peanats.Logger) peanats.MsgMiddleware {
+func ErrorLogMiddleware(log Logger) peanats.MsgMiddleware {
 	return func(h peanats.MsgHandler) peanats.MsgHandler {
 		return peanats.MsgHandlerFunc(func(ctx context.Context, m peanats.Msg) error {
 			err := h.HandleMsg(ctx, m)

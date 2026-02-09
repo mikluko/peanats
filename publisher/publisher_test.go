@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/codec"
 	"github.com/mikluko/peanats/internal/xtestutil"
 	"github.com/mikluko/peanats/publisher"
 )
@@ -15,8 +15,8 @@ type testPayload struct {
 }
 
 func BenchmarkPublisher(b *testing.B) {
-	b.Run("single/json", func(b *testing.B) { benchmarkPublisher(b, publisher.WithContentType(peanats.ContentTypeJson)) })
-	b.Run("pool/msgpack", func(b *testing.B) { benchmarkPublisher(b, publisher.WithContentType(peanats.ContentTypeMsgpack)) })
+	b.Run("single/json", func(b *testing.B) { benchmarkPublisher(b, publisher.WithContentType(codec.JSON)) })
+	b.Run("pool/msgpack", func(b *testing.B) { benchmarkPublisher(b, publisher.WithContentType(codec.Msgpack)) })
 }
 
 func benchmarkPublisher(b *testing.B, opts ...publisher.PublishOption) {

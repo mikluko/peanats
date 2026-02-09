@@ -11,8 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/codec"
 	"github.com/mikluko/peanats/contrib/pond"
 	"github.com/mikluko/peanats/internal/xmock/peanatsmock"
+	"github.com/mikluko/peanats/internal/xmock/transportmock"
 	"github.com/mikluko/peanats/internal/xtestutil"
 	"github.com/mikluko/peanats/subscriber"
 )
@@ -28,7 +30,7 @@ func TestRequester_Request(t *testing.T) {
 		msg := peanatsmock.NewMsg(t)
 		msg.EXPECT().Data().Return([]byte(`{"bar": "a dog"}`)).Once()
 		msg.EXPECT().Header().Return(peanats.Header{})
-		nc := peanatsmock.NewConnection(t)
+		nc := transportmock.NewConn(t)
 		nc.EXPECT().
 			Request(mock.Anything, mock.Anything).
 			Run(func(_ context.Context, msg peanats.Msg) {
@@ -46,7 +48,7 @@ func TestRequester_Request(t *testing.T) {
 		msg := peanatsmock.NewMsg(t)
 		msg.EXPECT().Data().Return([]byte(`{`)).Once()
 		msg.EXPECT().Header().Return(peanats.Header{})
-		nc := peanatsmock.NewConnection(t)
+		nc := transportmock.NewConn(t)
 		nc.EXPECT().
 			Request(mock.Anything, mock.Anything).
 			Return(msg, nil).Once()
@@ -57,7 +59,7 @@ func TestRequester_Request(t *testing.T) {
 	})
 	t.Run("some error", func(t *testing.T) {
 		testErr := errors.New("parson had a dog")
-		nc := peanatsmock.NewConnection(t)
+		nc := transportmock.NewConn(t)
 		nc.EXPECT().
 			Request(mock.Anything, mock.Anything).
 			Return(nil, testErr).Once()
@@ -126,7 +128,7 @@ func BenchmarkRequester_ResponseReceiver(b *testing.B) {
 	subch, _ := subscriber.SubscribeChan(
 		b.Context(),
 		peanats.MsgHandlerFromArgHandler(argh),
-		subscriber.SubscribeSubmitter(pond.Submitter(1000)),
+		subscriber.SubscribeDispatcher(pond.Dispatcher(1000)),
 	)
 	sub, err := nc.SubscribeChan(b.Context(), "baz.qux", subch)
 
@@ -169,7 +171,7 @@ func TestRequestHeader_Merging(t *testing.T) {
 		params := makeRequestParams()
 
 		// Verify default Content-Type is set
-		assert.Equal(t, []string{peanats.ContentTypeJson.String()}, params.header[peanats.HeaderContentType])
+		assert.Equal(t, []string{codec.JSON.String()}, params.header[codec.HeaderContentType])
 
 		// Add custom headers using RequestHeader
 		customHeader := make(peanats.Header)
@@ -179,7 +181,7 @@ func TestRequestHeader_Merging(t *testing.T) {
 		RequestHeader(customHeader)(&params)
 
 		// Verify both default and custom headers are present
-		assert.Equal(t, []string{peanats.ContentTypeJson.String()}, params.header[peanats.HeaderContentType])
+		assert.Equal(t, []string{codec.JSON.String()}, params.header[codec.HeaderContentType])
 		assert.Equal(t, []string{"Bearer token123"}, params.header["Authorization"])
 		assert.Equal(t, []string{"value1"}, params.header["X-Custom"])
 
@@ -191,7 +193,7 @@ func TestRequestHeader_Merging(t *testing.T) {
 		RequestHeader(moreHeaders)(&params)
 
 		// Verify headers are merged/appended
-		assert.Equal(t, []string{peanats.ContentTypeJson.String()}, params.header[peanats.HeaderContentType])
+		assert.Equal(t, []string{codec.JSON.String()}, params.header[codec.HeaderContentType])
 		assert.Equal(t, []string{"Bearer token123"}, params.header["Authorization"])
 		assert.Equal(t, []string{"value1", "value2"}, params.header["X-Custom"]) // Both values present
 		assert.Equal(t, []string{"another"}, params.header["X-Another"])
@@ -215,15 +217,15 @@ func TestRequestHeader_Merging(t *testing.T) {
 		)
 
 		// Verify all headers are present
-		assert.Equal(t, []string{peanats.ContentTypeJson.String()}, params.header[peanats.HeaderContentType])
+		assert.Equal(t, []string{codec.JSON.String()}, params.header[codec.HeaderContentType])
 		assert.Equal(t, []string{"first", "first-updated"}, params.header["X-First"])
 		assert.Equal(t, []string{"second"}, params.header["X-Second"])
 	})
 	t.Run("override", func(t *testing.T) {
 		params := makeRequestParams(
-			RequestContentType(peanats.ContentTypeYaml),
+			RequestContentType(codec.YAML),
 		)
-		assert.Equal(t, []string{peanats.ContentTypeYaml.String()}, params.header[peanats.HeaderContentType])
+		assert.Equal(t, []string{codec.YAML.String()}, params.header[codec.HeaderContentType])
 	})
 	t.Run("with content type", func(t *testing.T) {
 		customHeader := make(peanats.Header)
@@ -231,10 +233,10 @@ func TestRequestHeader_Merging(t *testing.T) {
 
 		params := makeRequestParams(
 			RequestHeader(customHeader),
-			RequestContentType(peanats.ContentTypeYaml), // This should override default JSON
+			RequestContentType(codec.YAML), // This should override default JSON
 		)
 
-		assert.Equal(t, []string{peanats.ContentTypeYaml.String()}, params.header[peanats.HeaderContentType])
+		assert.Equal(t, []string{codec.YAML.String()}, params.header[codec.HeaderContentType])
 		assert.Equal(t, []string{"Bearer token123"}, params.header["Authorization"])
 	})
 }

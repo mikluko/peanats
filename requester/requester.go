@@ -10,6 +10,8 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/codec"
+	"github.com/mikluko/peanats/transport"
 )
 
 type RequestOption func(*requestParams)
@@ -20,7 +22,7 @@ type requestParams struct {
 
 func makeRequestParams(opts ...RequestOption) requestParams {
 	p := requestParams{
-		header: peanats.Header{peanats.HeaderContentType: []string{peanats.ContentTypeJson.String()}},
+		header: peanats.Header{codec.HeaderContentType: []string{codec.JSON.String()}},
 	}
 	for _, opt := range opts {
 		opt(&p)
@@ -40,9 +42,9 @@ func RequestHeader(header peanats.Header) RequestOption {
 	}
 }
 
-func RequestContentType(c peanats.ContentType) RequestOption {
+func RequestContentType(c codec.ContentType) RequestOption {
 	return func(p *requestParams) {
-		p.header.Set(peanats.HeaderContentType, c.String())
+		p.header.Set(codec.HeaderContentType, c.String())
 	}
 }
 
@@ -51,17 +53,17 @@ type Requester[RQ, RS any] interface {
 	ResponseReceiver(context.Context, string, *RQ, ...ResponseReceiverOption) (ResponseReceiver[RS], error)
 }
 
-func New[RQ, RS any](nc peanats.Connection) Requester[RQ, RS] {
+func New[RQ, RS any](nc transport.Conn) Requester[RQ, RS] {
 	return &clientImpl[RQ, RS]{nc}
 }
 
 type clientImpl[RQ, RS any] struct {
-	nc peanats.Connection
+	nc transport.Conn
 }
 
 func (c *clientImpl[RQ, RS]) Request(ctx context.Context, subj string, rq *RQ, opts ...RequestOption) (Response[RS], error) {
 	p := makeRequestParams(opts...)
-	data, err := peanats.MarshalHeader(rq, p.header)
+	data, err := codec.MarshalHeader(rq, p.header)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +72,7 @@ func (c *clientImpl[RQ, RS]) Request(ctx context.Context, subj string, rq *RQ, o
 		return nil, err
 	}
 	rs := new(RS)
-	err = peanats.UnmarshalHeader(msg.Data(), rs, msg.Header())
+	err = codec.UnmarshalHeader(msg.Data(), rs, msg.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +89,7 @@ func (c *clientImpl[RQ, RS]) ResponseReceiver(ctx context.Context, subj string, 
 		opt(&rcvParams)
 	}
 	reqParams := makeRequestParams(rcvParams.rqOpts...)
-	data, err := peanats.MarshalHeader(rq, reqParams.header)
+	data, err := codec.MarshalHeader(rq, reqParams.header)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +237,7 @@ func ResponseReceiverRequestOptions(opts ...RequestOption) ResponseReceiverOptio
 type responseReceiverImpl[T any] struct {
 	msg     peanats.Msg
 	buf     chan peanats.Msg
-	sub     peanats.Unsubscriber
+	sub     transport.Unsubscriber
 	skp     Skipper
 	pdr     Proceeder
 	proceed bool
@@ -267,7 +269,7 @@ func (r *responseReceiverImpl[T]) Next(ctx context.Context) (_ Response[T], err 
 				return nil, err
 			} else if !skip {
 				x := new(T)
-				err := peanats.UnmarshalHeader(r.msg.Data(), x, r.msg.Header())
+				err := codec.UnmarshalHeader(r.msg.Data(), x, r.msg.Header())
 				if err != nil {
 					return nil, err
 				}

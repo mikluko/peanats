@@ -3,11 +3,9 @@ package logging
 import (
 	"context"
 	"log/slog"
-
-	"github.com/mikluko/peanats"
 )
 
-func SlogLogger(log *slog.Logger, lvl slog.Level) peanats.Logger {
+func SlogLogger(log *slog.Logger, lvl slog.Level) Logger {
 	return &slogLogger{log, lvl}
 }
 

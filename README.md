@@ -34,11 +34,11 @@ conn.Publish("subject", []byte("data"))
 
 ### Layer 2: Peanats Core
 
-Typed interfaces and middleware system around NATS and JetStream:
+Typed interfaces, middleware system, and transport adapter around NATS and JetStream:
 
 ```go
-pconn := peanats.NewConnection(conn)
-pconn.Publish(ctx, peanats.NewMsg(...)) // Takes peanats.Msg interface
+tc, _ := transport.Wrap(nats.Connect(nats.DefaultURL))
+tc.Publish(ctx, peanats.NewMsg(...)) // Takes peanats.Msg interface
 ```
 
 ### Layer 3: Peanats Packages
@@ -46,8 +46,8 @@ pconn.Publish(ctx, peanats.NewMsg(...)) // Takes peanats.Msg interface
 High-level typed APIs with automatic serialization and content-type detection:
 
 ```go
-pub := publisher.New(pconn)
-pub.Publish(ctx, "subject", MyStruct{}, publisher.WithContentType("application/json"))
+pub := publisher.New(tc)
+pub.Publish(ctx, "subject", MyStruct{}, publisher.WithContentType(codec.JSON))
 ```
 
 **When to use each layer:**
@@ -73,7 +73,6 @@ pub.Publish(ctx, "subject", MyStruct{}, publisher.WithContentType("application/j
 - **`logging/`** - Structured logging with Go's slog package
 - **`acknak/`** - Message acknowledgment helpers for JetStream
 - **`pond/`** - Worker pool integration using Alitto Pond
-- **`raft/`** - Raft consensus algorithm integration
 - **`muxer/`** - Message routing and multiplexing utilities
 
 ## Quick Start
@@ -86,9 +85,8 @@ package main
 import (
     "context"
     "github.com/nats-io/nats.go"
-    "github.com/mikluko/peanats"
     "github.com/mikluko/peanats/publisher"
-    "github.com/mikluko/peanats/subscriber"
+    "github.com/mikluko/peanats/transport"
 )
 
 type MyMessage struct {
@@ -99,40 +97,30 @@ type MyMessage struct {
 func main() {
     // Connect to NATS
     conn, _ := nats.Connect(nats.DefaultURL)
-    pconn := peanats.NewConnection(conn)
-    
+    tc, _ := transport.Wrap(conn)
+
     // Publisher
-    pub := publisher.New(pconn)
+    pub := publisher.New(tc)
     pub.Publish(context.Background(), "events", MyMessage{
         ID: "123", Data: "hello world",
     })
-    
-    // Subscriber
-    sub := subscriber.New[MyMessage](pconn)
-    ch := sub.Subscribe(context.Background(), "events")
-    
-    for msg := range ch {
-        // msg.Payload is typed as MyMessage
-        println("Received:", msg.Payload.Data)
-        msg.Ack(context.Background()) // Acknowledge if using JetStream
-    }
 }
 ```
 
 ### Request/Reply Pattern
 
 ```go
-// Server
-req := requester.New[MyRequest, MyResponse](pconn)
-responses := req.Request(ctx, "service.endpoint", MyRequest{Query: "data"})
+tc, _ := transport.Wrap(nats.Connect(nats.DefaultURL))
 
-for response := range responses {
-    if response.Err != nil {
-        log.Printf("Error: %v", response.Err)
+req := requester.New[MyRequest, MyResponse](tc)
+resp, _ := req.Request(ctx, "service.endpoint", MyRequest{Query: "data"})
+
+for r := range resp {
+    if r.Err != nil {
+        log.Printf("Error: %v", r.Err)
         continue
     }
-    // response.Payload is typed as MyResponse
-    println("Response:", response.Payload.Result)
+    println("Response:", r.Payload.Result)
 }
 ```
 
@@ -152,42 +140,30 @@ entry, _ = kv.Get(ctx, "key1")
 
 ## Middleware & Observability
 
-### Prometheus Metrics
+### Middleware Chain
+
+Middleware wraps message handlers to add cross-cutting concerns. Use `ChainMsgMiddleware`
+to compose them:
 
 ```go
-import "github.com/mikluko/peanats/contrib/prom"
-
-// Add Prometheus middleware
-middleware := prom.Middleware(
-    prom.MiddlewareNamespace("myapp"),
-    prom.MiddlewareSubsystem("events"),
+h := peanats.ChainMsgMiddleware(
+    peanats.MsgHandlerFromArgHandler[MyMessage](&myHandler{}),
+    logging.AccessLogMiddleware(logging.SlogLogger(slog.Default(), slog.LevelInfo)),
+    prom.Middleware(prom.MiddlewareNamespace("myapp")),
 )
 
-// Use with subscriber
-sub := subscriber.New[MyMessage](pconn, 
-    subscriber.WithMiddleware(middleware))
+ch, _ := subscriber.SubscribeChan(ctx, h)
+sub, _ := tc.SubscribeChan(ctx, "events.>", ch)
 ```
 
 ### OpenTelemetry Tracing
 
 ```go
-import "github.com/mikluko/peanats/contrib/trace"
-
 // Add tracing to publisher
-pub := trace.Publisher(publisher.New(pconn))
+pub := trace.Publisher(publisher.New(tc))
 
 // Add tracing to requester
-req := trace.Requester(requester.New[MyReq, MyResp](pconn))
-```
-
-### Structured Logging
-
-```go
-import "github.com/mikluko/peanats/contrib/logging"
-
-middleware := logging.Middleware(slog.Default())
-sub := subscriber.New[MyMessage](pconn,
-    subscriber.WithMiddleware(middleware))
+req := trace.Requester(requester.New[MyReq, MyResp](tc))
 ```
 
 ## Requirements
@@ -216,6 +192,12 @@ Peanats automatically selects serialization format based on message content-type
 - `application/yaml` - YAML  
 - `application/msgpack` - MessagePack
 - `application/protobuf` - Protocol Buffers
+
+## AI-Assisted Development
+
+This project is developed with substantial AI assistance ([Claude Code](https://docs.anthropic.com/en/docs/claude-code)). Every design decision, interface contract, and architectural trade-off is human-directed and human-reviewed. AI accelerates implementation; it does not drive it.
+
+Contributions that use AI tooling are welcome — under the same standard. If you can't explain why the code exists, it doesn't belong here.
 
 ## License
 

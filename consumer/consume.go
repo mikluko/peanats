@@ -11,15 +11,14 @@ import (
 type ConsumeOption func(*consumeParams)
 
 type consumeParams struct {
-	subm peanats.Submitter
-	errh peanats.ErrorHandler
+	disp peanats.Dispatcher
 	opts []jetstream.PullConsumeOpt
 }
 
-// ConsumeSubmitter sets the workload submitter.
-func ConsumeSubmitter(subm peanats.Submitter) ConsumeOption {
+// ConsumeDispatcher sets the dispatcher.
+func ConsumeDispatcher(disp peanats.Dispatcher) ConsumeOption {
 	return func(p *consumeParams) {
-		p.subm = subm
+		p.disp = disp
 	}
 }
 
@@ -27,13 +26,6 @@ func ConsumeSubmitter(subm peanats.Submitter) ConsumeOption {
 func ConsumeJetstreamOption(opt jetstream.PullConsumeOpt) ConsumeOption {
 	return func(p *consumeParams) {
 		p.opts = append(p.opts, opt)
-	}
-}
-
-// ConsumeErrorHandler sets the error handler.
-func ConsumeErrorHandler(errh peanats.ErrorHandler) ConsumeOption {
-	return func(p *consumeParams) {
-		p.errh = errh
 	}
 }
 
@@ -51,21 +43,17 @@ type consumer interface {
 // Consume implements consumer side of producer/consumer pattern.
 func Consume(ctx context.Context, c consumer, h peanats.MsgHandler, opts ...ConsumeOption) error {
 	p := consumeParams{
-		subm: peanats.DefaultSubmitter,
-		errh: peanats.DefaultErrorHandler,
+		disp: peanats.DefaultDispatcher,
 		opts: []jetstream.PullConsumeOpt{},
 	}
 	for _, o := range opts {
 		o(&p)
 	}
 	cc, err := c.Consume(func(m jetstream.Msg) {
-		p.subm.Submit(func() {
+		p.disp.Dispatch(func() error {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			err := h.HandleMsg(ctx, peanats.NewJetstream(m))
-			if err != nil {
-				p.errh.HandleError(ctx, err)
-			}
+			return h.HandleMsg(ctx, peanats.NewJetstream(m))
 		})
 	}, p.opts...)
 	if err != nil {

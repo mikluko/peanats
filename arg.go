@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mikluko/peanats/codec"
 	"github.com/mikluko/peanats/internal/xargpool"
 )
 
@@ -35,7 +36,7 @@ func MsgHandlerFromArgHandler[T any](h ArgHandler[T]) MsgHandler {
 		x := y.Value()
 		defer y.Release()
 
-		err := UnmarshalHeader(m.Data(), x, m.Header())
+		err := codec.UnmarshalHeader(m.Data(), x, m.Header())
 		if err != nil {
 			return fmt.Errorf("%w: %w", ErrArgumentUnmarshalFailed, err)
 		}
