@@ -29,6 +29,9 @@ type dispatcherImpl struct {
 }
 
 func (d *dispatcherImpl) Dispatch(f func() error) {
+	if f == nil {
+		return
+	}
 	d.wg.Add(1)
 	if err := d.pool.Go(func() {
 		defer d.wg.Done()

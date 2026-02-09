@@ -84,6 +84,12 @@ func TestDispatcher(t *testing.T) {
 		joined := err.Error()
 		assert.Equal(t, n/10, len(strings.Split(joined, "\n")))
 	})
+	t.Run("nil function ignored", func(t *testing.T) {
+		d := peanats.NewDispatcher()
+		d.Dispatch(nil)
+		err := d.Wait(t.Context())
+		require.NoError(t, err)
+	})
 	t.Run("reuse after wait", func(t *testing.T) {
 		d := peanats.NewDispatcher()
 

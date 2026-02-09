@@ -43,6 +43,12 @@ func TestDispatcher(t *testing.T) {
 		err := d.Wait(ctx)
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 	})
+	t.Run("nil function ignored", func(t *testing.T) {
+		d := pond.Dispatcher(4)
+		d.Dispatch(nil)
+		err := d.Wait(t.Context())
+		require.NoError(t, err)
+	})
 	t.Run("dispatch after pool stopped", func(t *testing.T) {
 		pool := pondlib.NewPool(4)
 		d := pond.DispatcherPool(pool)
