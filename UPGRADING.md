@@ -165,8 +165,10 @@ type Dispatcher interface {
 | `pond.Submitter(n)` | `pond.Dispatcher(n)` |
 | `pond.SubmitterPool(pool)` | `pond.DispatcherPool(pool)` |
 
-**Behavior change:** The default error handling no longer panics. Errors are collected
-and returned from `Dispatcher.Wait()`. Call `Wait()` during shutdown to retrieve errors.
+**Behavior change:** `DefaultDispatcher` remains fail-fast — it logs via `slog.Error` and
+panics on task errors, ensuring failures are never silent. For graceful error collection,
+use `peanats.NewDispatcher()` or `pond.Dispatcher()` — these collect errors internally
+and return them from `Wait()`. Call `Wait()` during shutdown to drain in-flight tasks.
 
 ### Quick migration
 
@@ -204,6 +206,19 @@ find . -name '*.go' -exec sed -i'' \
   -e 's/peanats\.SubscribeHandlerErrorHandler/transport.SubscribeHandlerDispatcher/g' \
   -e 's/peanats\.SubscribeChanOption/transport.SubscribeChanOption/g' \
   -e 's/peanats\.SubscribeChanQueue/transport.SubscribeChanQueue/g' \
+  -e 's/peanats\.Submitter/peanats.Dispatcher/g' \
+  -e 's/peanats\.ErrorHandler/peanats.Dispatcher/g' \
+  -e 's/peanats\.DefaultSubmitter/peanats.DefaultDispatcher/g' \
+  -e 's/peanats\.DefaultErrorHandler/peanats.DefaultDispatcher/g' \
+  -e 's/subscriber\.SubscribeSubmitter/subscriber.SubscribeDispatcher/g' \
+  -e 's/subscriber\.SubscribeErrorHandler/subscriber.SubscribeDispatcher/g' \
+  -e 's/consumer\.ConsumeSubmitter/consumer.ConsumeDispatcher/g' \
+  -e 's/consumer\.ConsumeErrorHandler/consumer.ConsumeDispatcher/g' \
+  -e 's/bucket\.WatchSubmitter/bucket.WatchDispatcher/g' \
+  -e 's/bucket\.WatchErrorHandler/bucket.WatchDispatcher/g' \
+  -e 's/pond\.Submitter/pond.Dispatcher/g' \
+  -e 's/pond\.SubmitterPool/pond.DispatcherPool/g' \
+  -e 's/raft\.WithErrorHandler/raft.WithDispatcher/g' \
   {} +
 
 # Fix imports (adds codec/ and transport/, removes unused peanats imports)
