@@ -206,6 +206,10 @@ Peanats automatically selects serialization format based on message content-type
 - `application/msgpack` - MessagePack
 - `application/protobuf` - Protocol Buffers
 
+## AI-Assisted Development
+
+This project is developed with substantial AI assistance ([Claude Code](https://docs.anthropic.com/en/docs/claude-code)). Every design decision, interface contract, and architectural trade-off is human-directed and human-reviewed. AI accelerates implementation; it does not drive it.
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
