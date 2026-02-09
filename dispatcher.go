@@ -7,6 +7,22 @@ import (
 )
 
 // Dispatcher provides async task dispatch with error collection and graceful drain.
+//
+// Dispatch submits a task for asynchronous execution. Errors returned by the
+// task function are collected internally.
+//
+// Wait blocks until all dispatched tasks complete or the context expires, then
+// returns collected errors via errors.Join. After Wait returns, the error
+// accumulator is reset and the Dispatcher may be reused for another
+// dispatch/wait cycle.
+//
+// If the context passed to Wait expires before all tasks complete, Wait returns
+// the context error immediately. A background goroutine continues to wait for
+// the remaining tasks — its lifetime is bounded by task completion, not by the
+// Dispatcher. In practice, tasks that respect their context will finish shortly
+// after cancellation, allowing the goroutine to exit. Errors from tasks that
+// complete after Wait returns are retained and available to a subsequent Wait
+// call.
 type Dispatcher interface {
 	Dispatch(func() error)
 	Wait(context.Context) error
