@@ -242,7 +242,7 @@ func (_c *Conn_Request_Call) RunAndReturn(run func(ctx context.Context, msg pean
 }
 
 // Subscribe provides a mock function for the type Conn
-func (_mock *Conn) Subscribe(ctx context.Context, subj string, opts ...transport.SubscribeOption) (peanats.Subscription, error) {
+func (_mock *Conn) Subscribe(ctx context.Context, subj string, opts ...transport.SubscribeOption) (transport.Subscription, error) {
 	var tmpRet mock.Arguments
 	if len(opts) > 0 {
 		tmpRet = _mock.Called(ctx, subj, opts)
@@ -255,16 +255,16 @@ func (_mock *Conn) Subscribe(ctx context.Context, subj string, opts ...transport
 		panic("no return value specified for Subscribe")
 	}
 
-	var r0 peanats.Subscription
+	var r0 transport.Subscription
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...transport.SubscribeOption) (peanats.Subscription, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...transport.SubscribeOption) (transport.Subscription, error)); ok {
 		return returnFunc(ctx, subj, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...transport.SubscribeOption) peanats.Subscription); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...transport.SubscribeOption) transport.Subscription); ok {
 		r0 = returnFunc(ctx, subj, opts...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(peanats.Subscription)
+			r0 = ret.Get(0).(transport.Subscription)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, ...transport.SubscribeOption) error); ok {
@@ -314,18 +314,18 @@ func (_c *Conn_Subscribe_Call) Run(run func(ctx context.Context, subj string, op
 	return _c
 }
 
-func (_c *Conn_Subscribe_Call) Return(subscription peanats.Subscription, err error) *Conn_Subscribe_Call {
+func (_c *Conn_Subscribe_Call) Return(subscription transport.Subscription, err error) *Conn_Subscribe_Call {
 	_c.Call.Return(subscription, err)
 	return _c
 }
 
-func (_c *Conn_Subscribe_Call) RunAndReturn(run func(ctx context.Context, subj string, opts ...transport.SubscribeOption) (peanats.Subscription, error)) *Conn_Subscribe_Call {
+func (_c *Conn_Subscribe_Call) RunAndReturn(run func(ctx context.Context, subj string, opts ...transport.SubscribeOption) (transport.Subscription, error)) *Conn_Subscribe_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // SubscribeChan provides a mock function for the type Conn
-func (_mock *Conn) SubscribeChan(ctx context.Context, subj string, ch chan peanats.Msg, opts ...transport.SubscribeChanOption) (peanats.Unsubscriber, error) {
+func (_mock *Conn) SubscribeChan(ctx context.Context, subj string, ch chan peanats.Msg, opts ...transport.SubscribeChanOption) (transport.Unsubscriber, error) {
 	var tmpRet mock.Arguments
 	if len(opts) > 0 {
 		tmpRet = _mock.Called(ctx, subj, ch, opts)
@@ -338,16 +338,16 @@ func (_mock *Conn) SubscribeChan(ctx context.Context, subj string, ch chan peana
 		panic("no return value specified for SubscribeChan")
 	}
 
-	var r0 peanats.Unsubscriber
+	var r0 transport.Unsubscriber
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, chan peanats.Msg, ...transport.SubscribeChanOption) (peanats.Unsubscriber, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, chan peanats.Msg, ...transport.SubscribeChanOption) (transport.Unsubscriber, error)); ok {
 		return returnFunc(ctx, subj, ch, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, chan peanats.Msg, ...transport.SubscribeChanOption) peanats.Unsubscriber); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, chan peanats.Msg, ...transport.SubscribeChanOption) transport.Unsubscriber); ok {
 		r0 = returnFunc(ctx, subj, ch, opts...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(peanats.Unsubscriber)
+			r0 = ret.Get(0).(transport.Unsubscriber)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, chan peanats.Msg, ...transport.SubscribeChanOption) error); ok {
@@ -403,18 +403,18 @@ func (_c *Conn_SubscribeChan_Call) Run(run func(ctx context.Context, subj string
 	return _c
 }
 
-func (_c *Conn_SubscribeChan_Call) Return(unsubscriber peanats.Unsubscriber, err error) *Conn_SubscribeChan_Call {
+func (_c *Conn_SubscribeChan_Call) Return(unsubscriber transport.Unsubscriber, err error) *Conn_SubscribeChan_Call {
 	_c.Call.Return(unsubscriber, err)
 	return _c
 }
 
-func (_c *Conn_SubscribeChan_Call) RunAndReturn(run func(ctx context.Context, subj string, ch chan peanats.Msg, opts ...transport.SubscribeChanOption) (peanats.Unsubscriber, error)) *Conn_SubscribeChan_Call {
+func (_c *Conn_SubscribeChan_Call) RunAndReturn(run func(ctx context.Context, subj string, ch chan peanats.Msg, opts ...transport.SubscribeChanOption) (transport.Unsubscriber, error)) *Conn_SubscribeChan_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // SubscribeHandler provides a mock function for the type Conn
-func (_mock *Conn) SubscribeHandler(ctx context.Context, subj string, handler peanats.MsgHandler, opts ...transport.SubscribeHandlerOption) (peanats.Unsubscriber, error) {
+func (_mock *Conn) SubscribeHandler(ctx context.Context, subj string, handler peanats.MsgHandler, opts ...transport.SubscribeHandlerOption) (transport.Unsubscriber, error) {
 	var tmpRet mock.Arguments
 	if len(opts) > 0 {
 		tmpRet = _mock.Called(ctx, subj, handler, opts)
@@ -427,16 +427,16 @@ func (_mock *Conn) SubscribeHandler(ctx context.Context, subj string, handler pe
 		panic("no return value specified for SubscribeHandler")
 	}
 
-	var r0 peanats.Unsubscriber
+	var r0 transport.Unsubscriber
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, peanats.MsgHandler, ...transport.SubscribeHandlerOption) (peanats.Unsubscriber, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, peanats.MsgHandler, ...transport.SubscribeHandlerOption) (transport.Unsubscriber, error)); ok {
 		return returnFunc(ctx, subj, handler, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, peanats.MsgHandler, ...transport.SubscribeHandlerOption) peanats.Unsubscriber); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, peanats.MsgHandler, ...transport.SubscribeHandlerOption) transport.Unsubscriber); ok {
 		r0 = returnFunc(ctx, subj, handler, opts...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(peanats.Unsubscriber)
+			r0 = ret.Get(0).(transport.Unsubscriber)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, peanats.MsgHandler, ...transport.SubscribeHandlerOption) error); ok {
@@ -492,12 +492,12 @@ func (_c *Conn_SubscribeHandler_Call) Run(run func(ctx context.Context, subj str
 	return _c
 }
 
-func (_c *Conn_SubscribeHandler_Call) Return(unsubscriber peanats.Unsubscriber, err error) *Conn_SubscribeHandler_Call {
+func (_c *Conn_SubscribeHandler_Call) Return(unsubscriber transport.Unsubscriber, err error) *Conn_SubscribeHandler_Call {
 	_c.Call.Return(unsubscriber, err)
 	return _c
 }
 
-func (_c *Conn_SubscribeHandler_Call) RunAndReturn(run func(ctx context.Context, subj string, handler peanats.MsgHandler, opts ...transport.SubscribeHandlerOption) (peanats.Unsubscriber, error)) *Conn_SubscribeHandler_Call {
+func (_c *Conn_SubscribeHandler_Call) RunAndReturn(run func(ctx context.Context, subj string, handler peanats.MsgHandler, opts ...transport.SubscribeHandlerOption) (transport.Unsubscriber, error)) *Conn_SubscribeHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }

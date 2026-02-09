@@ -9,13 +9,25 @@ import (
 	"github.com/mikluko/peanats"
 )
 
+// Unsubscriber represents something that can be unsubscribed.
+type Unsubscriber interface {
+	Unsubscribe() error
+}
+
+// Subscription represents a message subscription that can pull messages
+// and be unsubscribed.
+type Subscription interface {
+	Unsubscriber
+	NextMsg(ctx context.Context) (peanats.Msg, error)
+}
+
 // Conn provides a typed message abstraction over a raw NATS connection.
 type Conn interface {
 	Publish(ctx context.Context, msg peanats.Msg) error
 	Request(ctx context.Context, msg peanats.Msg) (peanats.Msg, error)
-	Subscribe(ctx context.Context, subj string, opts ...SubscribeOption) (peanats.Subscription, error)
-	SubscribeChan(ctx context.Context, subj string, ch chan peanats.Msg, opts ...SubscribeChanOption) (peanats.Unsubscriber, error)
-	SubscribeHandler(ctx context.Context, subj string, handler peanats.MsgHandler, opts ...SubscribeHandlerOption) (peanats.Unsubscriber, error)
+	Subscribe(ctx context.Context, subj string, opts ...SubscribeOption) (Subscription, error)
+	SubscribeChan(ctx context.Context, subj string, ch chan peanats.Msg, opts ...SubscribeChanOption) (Unsubscriber, error)
+	SubscribeHandler(ctx context.Context, subj string, handler peanats.MsgHandler, opts ...SubscribeHandlerOption) (Unsubscriber, error)
 	Drain() error
 	Close()
 }
@@ -115,7 +127,7 @@ func SubscribeQueue(name string) SubscribeOption {
 	}
 }
 
-func (c *connImpl) Subscribe(_ context.Context, subj string, opts ...SubscribeOption) (peanats.Subscription, error) {
+func (c *connImpl) Subscribe(_ context.Context, subj string, opts ...SubscribeOption) (Subscription, error) {
 	p := subscribeParams{}
 	for _, o := range opts {
 		o(&p)
@@ -165,7 +177,7 @@ func SubscribeHandlerQueue(name string) SubscribeHandlerOption {
 	}
 }
 
-func (c *connImpl) SubscribeHandler(ctx context.Context, subj string, h peanats.MsgHandler, opts ...SubscribeHandlerOption) (peanats.Unsubscriber, error) {
+func (c *connImpl) SubscribeHandler(ctx context.Context, subj string, h peanats.MsgHandler, opts ...SubscribeHandlerOption) (Unsubscriber, error) {
 	p := subscribeHandlerParams{
 		subm: peanats.DefaultSubmitter,
 		errh: peanats.DefaultErrorHandler,
@@ -210,7 +222,7 @@ func SubscribeChanQueue(name string) SubscribeChanOption {
 	}
 }
 
-func (c *connImpl) SubscribeChan(_ context.Context, subj string, ch chan peanats.Msg, opts ...SubscribeChanOption) (peanats.Unsubscriber, error) {
+func (c *connImpl) SubscribeChan(_ context.Context, subj string, ch chan peanats.Msg, opts ...SubscribeChanOption) (Unsubscriber, error) {
 	p := subscribeChanParams{}
 	for _, o := range opts {
 		o(&p)

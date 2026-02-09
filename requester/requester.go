@@ -237,7 +237,7 @@ func ResponseReceiverRequestOptions(opts ...RequestOption) ResponseReceiverOptio
 type responseReceiverImpl[T any] struct {
 	msg     peanats.Msg
 	buf     chan peanats.Msg
-	sub     peanats.Unsubscriber
+	sub     transport.Unsubscriber
 	skp     Skipper
 	pdr     Proceeder
 	proceed bool

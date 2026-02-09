@@ -24,6 +24,8 @@ inverted conditions where `queue=""` incorrectly called queue methods and vice v
 
 | Old (peanats)                                | New (transport)                                |
 |----------------------------------------------|------------------------------------------------|
+| `peanats.Unsubscriber`                       | `transport.Unsubscriber`                       |
+| `peanats.Subscription`                       | `transport.Subscription`                       |
 | `peanats.Connection`                         | `transport.Conn`                               |
 | `peanats.Publisher`                          | Removed (use `transport.Conn` directly)        |
 | `peanats.Requester`                          | Removed (use `transport.Conn` directly)        |
@@ -140,6 +142,8 @@ most cases:
 ```bash
 # Run from the repository root of your project
 find . -name '*.go' -exec sed -i'' \
+  -e 's/peanats\.Subscription/transport.Subscription/g' \
+  -e 's/peanats\.Unsubscriber/transport.Unsubscriber/g' \
   -e 's/peanats\.WrapConnection/transport.Wrap/g' \
   -e 's/peanats\.NewConnection/transport.New/g' \
   -e 's/peanats\.Connection/transport.Conn/g' \

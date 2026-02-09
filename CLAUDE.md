@@ -51,9 +51,8 @@ go mod tidy
 ### Core Components
 
 - **Message System** (`msg.go`): Typed message interfaces supporting both regular NATS and JetStream messages
-- **Interfaces** (`interfaces.go`): `Subscription` and `Unsubscriber` interfaces
 - **Codec System** (`codec/`): Multi-format serialization (JSON, YAML, MessagePack, Protocol Buffers) with content-type based selection
-- **Transport Layer** (`transport/`): NATS connection adapter (`transport.Conn`) wrapping `*nats.Conn` with typed message operations
+- **Transport Layer** (`transport/`): NATS connection adapter (`transport.Conn`) wrapping `*nats.Conn` with typed message operations; also defines `Subscription` and `Unsubscriber` interfaces
 - **Submitter Pattern** (`subm.go`): Async task execution abstraction for decoupled processing
 
 ### Messaging Patterns
@@ -198,7 +197,7 @@ Each package implements a specific messaging pattern with full type safety:
 
 - Extracted `codec/` package from root: `Codec` interface, `ContentType` enum, all codec implementations, marshal/unmarshal helpers
 - Extracted `transport/` package from root: `Conn` interface wrapping `*nats.Conn`, all subscribe options
-- Root package now contains: message types/interfaces, handlers, middleware, arg system, submitter, error handling, logging
+- Root package now contains: message types, handlers, middleware, arg system, submitter, error handling, logging
 - `codec/` defines its own `Header = textproto.MIMEHeader` alias (identical to `peanats.Header`) to avoid circular imports
 - Root imports `codec/` (for `arg.go` unmarshal); `codec/` does NOT import root
 - Renamed symbols: `CodecContentType` → `codec.ForContentType`, `CodecHeader` → `codec.ForHeader`, `WrapConnection` → `transport.Wrap`, `NewConnection` → `transport.New`
@@ -210,6 +209,7 @@ Each package implements a specific messaging pattern with full type safety:
 
 ### Changelog
 
+- 2026-02-09: Moved `Unsubscriber` and `Subscription` interfaces from root to `transport/` package; deleted `interfaces.go`
 - 2026-02-09: v0.22.0 — Extracted codec/ and transport/ packages from root; fixed queue subscription bug; resolved naming collisions
 - 2026-02-06: v0.21.0 — Replaced publisher trace spans with events (breaking: removed span-related options)
 - 2025-07-02: Fixed prometheus middleware to preserve Metadatable interface when wrapping messages
