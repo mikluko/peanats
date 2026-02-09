@@ -196,7 +196,7 @@ Each package implements a specific messaging pattern with full type safety:
 
 - Extracted `codec/` package from root: `Codec` interface, `ContentType` enum, all codec implementations, marshal/unmarshal helpers
 - Extracted `transport/` package from root: `Conn` interface wrapping `*nats.Conn`, all subscribe options
-- Root package now contains: message types, handlers, middleware, arg system, dispatcher, logging
+- Root package now contains: message types, handlers, middleware, arg system, dispatcher
 - `codec/` defines its own `Header = textproto.MIMEHeader` alias (identical to `peanats.Header`) to avoid circular imports
 - Root imports `codec/` (for `arg.go` unmarshal); `codec/` does NOT import root
 - Renamed symbols: `CodecContentType` → `codec.ForContentType`, `CodecHeader` → `codec.ForHeader`, `WrapConnection` → `transport.Wrap`, `NewConnection` → `transport.New`

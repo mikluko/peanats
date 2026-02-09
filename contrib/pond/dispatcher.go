@@ -43,7 +43,7 @@ func (d *dispatcherImpl) Dispatch(f func() error) {
 	}); err != nil {
 		d.wg.Done()
 		d.mu.Lock()
-		d.errs = append(d.errs, fmt.Errorf("dispatch failed: %w", err))
+		d.errs = append(d.errs, fmt.Errorf("dispatch failed (task not executed): %w", err))
 		d.mu.Unlock()
 	}
 }
