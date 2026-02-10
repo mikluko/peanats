@@ -1,6 +1,7 @@
 package bucket_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/nats-io/nats.go/jetstream"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/mikluko/peanats"
 	"github.com/mikluko/peanats/bucket"
+	"github.com/mikluko/peanats/codec"
 	"github.com/mikluko/peanats/internal/xmock/jetstreammock"
 )
 
@@ -296,4 +298,121 @@ func TestBucket_History(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, entries)
 	})
+}
+
+func TestBucket_PutGetWithEncoding(t *testing.T) {
+	encodings := []struct {
+		name     string
+		encoding codec.ContentEncoding
+	}{
+		{"zstd", codec.Zstd},
+		{"s2", codec.S2},
+	}
+	for _, enc := range encodings {
+		t.Run(enc.name, func(t *testing.T) {
+			key := "parson.had.a.dog"
+			e := testPutUpdateEntryImpl{
+				key: key,
+				hdr: peanats.Header{},
+				mod: &testModel{Name: "balooney"},
+			}
+
+			// Get uncompressed reference for comparison
+			ePlain := testPutUpdateEntryImpl{
+				key: key,
+				hdr: peanats.Header{},
+				mod: &testModel{Name: "balooney"},
+			}
+			var plainCaptured []byte
+			nbPlain := jetstreammock.NewKeyValue(t)
+			nbPlain.EXPECT().
+				Put(mock.Anything, key, mock.Anything).
+				Run(func(_ context.Context, _ string, data []byte) {
+					plainCaptured = make([]byte, len(data))
+					copy(plainCaptured, data)
+				}).
+				Return(uint64(1), nil).Once()
+			bPlain := bucket.NewBucket[testModel](nbPlain)
+			_, err := bPlain.Put(t.Context(), &ePlain)
+			require.NoError(t, err)
+
+			// Capture the bytes written by Put with compression
+			var captured []byte
+			nb := jetstreammock.NewKeyValue(t)
+			nb.EXPECT().
+				Put(mock.Anything, key, mock.Anything).
+				Run(func(_ context.Context, _ string, data []byte) {
+					captured = make([]byte, len(data))
+					copy(captured, data)
+				}).
+				Return(uint64(1), nil).Once()
+
+			b := bucket.NewBucket[testModel](nb, bucket.BucketContentEncoding(enc.encoding))
+			rev, err := b.Put(t.Context(), &e)
+			require.NoError(t, err)
+			assert.Equal(t, uint64(1), rev)
+
+			// Compressed output should differ from plain
+			assert.NotEqual(t, plainCaptured, captured)
+			assert.Contains(t, string(captured), "Content-Encoding: "+enc.encoding.String())
+
+			// Round-trip: Get should decompress and decode
+			ne := jetstreammock.NewKeyValueEntry(t)
+			ne.EXPECT().Key().Return(key).Once()
+			ne.EXPECT().Operation().Return(jetstream.KeyValuePut).Once()
+			ne.EXPECT().Value().Return(captured).Once()
+
+			nb2 := jetstreammock.NewKeyValue(t)
+			nb2.EXPECT().Get(mock.Anything, key).Return(ne, nil).Once()
+
+			b2 := bucket.NewBucket[testModel](nb2)
+			v, err := b2.Get(t.Context(), key)
+			require.NoError(t, err)
+			assert.Equal(t, "balooney", v.Value().Name)
+		})
+	}
+}
+
+func TestBucket_UpdateWithEncoding(t *testing.T) {
+	key := "parson.had.a.dog"
+
+	// Get uncompressed reference
+	ePlain := testPutUpdateEntryImpl{
+		key: key, hdr: peanats.Header{}, mod: &testModel{Name: "balooney"}, rev: 1,
+	}
+	var plainCaptured []byte
+	nbPlain := jetstreammock.NewKeyValue(t)
+	nbPlain.EXPECT().
+		Update(mock.Anything, key, mock.Anything, uint64(1)).
+		Run(func(_ context.Context, _ string, data []byte, _ uint64) {
+			plainCaptured = make([]byte, len(data))
+			copy(plainCaptured, data)
+		}).
+		Return(uint64(2), nil).Once()
+	bPlain := bucket.NewBucket[testModel](nbPlain)
+	_, err := bPlain.Update(t.Context(), &ePlain)
+	require.NoError(t, err)
+
+	// Update with compression
+	e := testPutUpdateEntryImpl{
+		key: key, hdr: peanats.Header{}, mod: &testModel{Name: "balooney"}, rev: 1,
+	}
+	var captured []byte
+	nb := jetstreammock.NewKeyValue(t)
+	nb.EXPECT().
+		Update(mock.Anything, key, mock.Anything, uint64(1)).
+		Run(func(_ context.Context, _ string, data []byte, _ uint64) {
+			captured = make([]byte, len(data))
+			copy(captured, data)
+		}).
+		Return(uint64(2), nil).Once()
+
+	b := bucket.NewBucket[testModel](nb, bucket.BucketContentEncoding(codec.Zstd))
+	rev, err := b.Update(t.Context(), &e)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(2), rev)
+
+	// Compressed output should differ from plain
+	assert.NotEqual(t, plainCaptured, captured)
+	assert.Contains(t, string(captured), "Content-Encoding: zstd")
 }

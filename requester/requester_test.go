@@ -163,6 +163,84 @@ func BenchmarkRequester_ResponseReceiver(b *testing.B) {
 	}
 }
 
+func TestRequester_Request_WithContentEncoding(t *testing.T) {
+	type request struct {
+		Foo string `json:"foo"`
+	}
+	type response struct {
+		Bar string `json:"bar"`
+	}
+	encodings := []struct {
+		name     string
+		encoding codec.ContentEncoding
+	}{
+		{"zstd", codec.Zstd},
+		{"s2", codec.S2},
+	}
+	for _, enc := range encodings {
+		t.Run(enc.name, func(t *testing.T) {
+			// Capture the request message sent to the mock
+			var capturedReq peanats.Msg
+
+			// Prepare a compressed response
+			rsHeader := peanats.Header{
+				codec.HeaderContentType: []string{codec.JSON.String()},
+			}
+			rsData, err := codec.MarshalHeader(&response{Bar: "a dog"}, rsHeader)
+			require.NoError(t, err)
+
+			rsMsg := peanatsmock.NewMsg(t)
+			rsMsg.EXPECT().Data().Return(rsData)
+			rsMsg.EXPECT().Header().Return(rsHeader)
+
+			nc := transportmock.NewConn(t)
+			nc.EXPECT().
+				Request(mock.Anything, mock.Anything).
+				Run(func(_ context.Context, msg peanats.Msg) {
+					capturedReq = msg
+				}).
+				Return(rsMsg, nil).Once()
+
+			c := New[request, response](nc)
+			rs, err := c.Request(context.Background(), "parson.had", &request{Foo: "a dog"},
+				RequestContentEncoding(enc.encoding),
+			)
+			require.NoError(t, err)
+			require.NotNil(t, rs)
+			assert.Equal(t, &response{Bar: "a dog"}, rs.Value())
+
+			// Verify encoding header was set on the request
+			assert.Equal(t, enc.encoding.String(), capturedReq.Header().Get(codec.HeaderContentEncoding))
+
+			// Verify request data is compressed (not plain JSON)
+			assert.NotEqual(t, `{"foo":"a dog"}`, string(capturedReq.Data()))
+
+			// Verify round-trip: the compressed request data can be decompressed
+			var decoded request
+			err = codec.UnmarshalHeader(capturedReq.Data(), &decoded, capturedReq.Header())
+			require.NoError(t, err)
+			assert.Equal(t, request{Foo: "a dog"}, decoded)
+		})
+	}
+}
+
+func TestRequestContentEncoding_Option(t *testing.T) {
+	t.Run("sets header", func(t *testing.T) {
+		params := makeRequestParams(
+			RequestContentEncoding(codec.Zstd),
+		)
+		assert.Equal(t, "zstd", params.header.Get(codec.HeaderContentEncoding))
+	})
+	t.Run("with content type", func(t *testing.T) {
+		params := makeRequestParams(
+			RequestContentType(codec.YAML),
+			RequestContentEncoding(codec.S2),
+		)
+		assert.Equal(t, codec.YAML.String(), params.header.Get(codec.HeaderContentType))
+		assert.Equal(t, "s2", params.header.Get(codec.HeaderContentEncoding))
+	})
+}
+
 func TestRequestHeader_Merging(t *testing.T) {
 	t.Run("merging", func(t *testing.T) {
 		// Test that RequestHeader merges headers instead of replacing them

@@ -16,8 +16,9 @@ type RawPublisher interface {
 type PublishOption func(*PublishParams)
 
 type PublishParams struct {
-	Header      peanats.Header
-	ContentType codec.ContentType
+	Header          peanats.Header
+	ContentType     codec.ContentType
+	ContentEncoding codec.ContentEncoding
 }
 
 // WithHeader sets the header for the message.
@@ -32,6 +33,13 @@ func WithHeader(header peanats.Header) PublishOption {
 func WithContentType(c codec.ContentType) PublishOption {
 	return func(p *PublishParams) {
 		p.ContentType = c
+	}
+}
+
+// WithContentEncoding sets the compression algorithm for the message.
+func WithContentEncoding(e codec.ContentEncoding) PublishOption {
+	return func(p *PublishParams) {
+		p.ContentEncoding = e
 	}
 }
 
@@ -55,12 +63,11 @@ func (i *publisherImpl) Publish(ctx context.Context, subj string, v any, opts ..
 	for _, o := range opts {
 		o(&p)
 	}
-	c, err := codec.ForContentType(p.ContentType)
-	if err != nil {
-		return err
+	p.Header.Set(codec.HeaderContentType, p.ContentType.String())
+	if p.ContentEncoding != 0 {
+		codec.SetContentEncoding(p.Header, p.ContentEncoding)
 	}
-	c.SetContentType(p.Header)
-	data, err := c.Marshal(v)
+	data, err := codec.MarshalHeader(v, p.Header)
 	if err != nil {
 		return err
 	}

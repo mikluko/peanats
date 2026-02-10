@@ -48,6 +48,13 @@ func RequestContentType(c codec.ContentType) RequestOption {
 	}
 }
 
+// RequestContentEncoding sets the compression algorithm for the request message.
+func RequestContentEncoding(e codec.ContentEncoding) RequestOption {
+	return func(p *requestParams) {
+		codec.SetContentEncoding(p.header, e)
+	}
+}
+
 type Requester[RQ, RS any] interface {
 	Request(context.Context, string, *RQ, ...RequestOption) (Response[RS], error)
 	ResponseReceiver(context.Context, string, *RQ, ...ResponseReceiverOption) (ResponseReceiver[RS], error)

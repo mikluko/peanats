@@ -81,6 +81,16 @@ func encodeBucketEntryHeader[T any](h peanats.Header, v *T) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if enc := codec.EncodingFromHeader(h); enc != 0 {
+		comp, err := codec.ForContentEncoding(enc)
+		if err != nil {
+			return nil, err
+		}
+		p, err = comp.Compress(p)
+		if err != nil {
+			return nil, err
+		}
+	}
 	q, _ := w.CreatePart(h)
 	_, _ = q.Write(p)
 	return buf.Bytes(), nil
@@ -99,8 +109,19 @@ func decodeBucketEntryHeader[T any](b []byte) (h peanats.Header, v *T, err error
 	}
 	buf := new(bytes.Buffer)
 	_, _ = buf.ReadFrom(p)
+	data := buf.Bytes()
+	if enc := codec.EncodingFromHeader(h); enc != 0 {
+		comp, err := codec.ForContentEncoding(enc)
+		if err != nil {
+			return nil, nil, err
+		}
+		data, err = comp.Decompress(data)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 	v = new(T)
-	err = c.Unmarshal(buf.Bytes(), v)
+	err = c.Unmarshal(data, v)
 	if err != nil {
 		return nil, nil, err
 	}

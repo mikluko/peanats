@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/alitto/pond/v2 v2.2.0
 	github.com/jackc/puddle/v2 v2.2.2
+	github.com/klauspost/compress v1.18.0
 	github.com/nats-io/nats-server/v2 v2.10.27
 	github.com/nats-io/nats.go v1.39.1
 	github.com/prometheus/client_golang v1.22.0
@@ -25,7 +26,6 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/minio/highwayhash v1.0.3 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect

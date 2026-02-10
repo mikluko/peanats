@@ -8,6 +8,7 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 
 	"github.com/mikluko/peanats"
+	"github.com/mikluko/peanats/codec"
 )
 
 type Bucket[T any] interface {
@@ -28,13 +29,15 @@ func NewBucket[T any](bucket jetstream.KeyValue, opts ...BucketOption) Bucket[T]
 		opt(params)
 	}
 	return &bucketImpl[T]{
-		bucket: bucket,
-		prefix: params.prefix,
+		bucket:          bucket,
+		prefix:          params.prefix,
+		contentEncoding: params.contentEncoding,
 	}
 }
 
 type bucketParams struct {
-	prefix string
+	prefix          string
+	contentEncoding codec.ContentEncoding
 }
 
 type BucketOption func(opts *bucketParams)
@@ -45,10 +48,18 @@ func BucketKeyPrefix(prefix string) BucketOption {
 	}
 }
 
+// BucketContentEncoding sets the compression algorithm for bucket entries.
+func BucketContentEncoding(e codec.ContentEncoding) BucketOption {
+	return func(params *bucketParams) {
+		params.contentEncoding = e
+	}
+}
+
 // Bucket is a typed key-value store
 type bucketImpl[T any] struct {
-	bucket jetstream.KeyValue
-	prefix string
+	bucket          jetstream.KeyValue
+	prefix          string
+	contentEncoding codec.ContentEncoding
 }
 
 func (s *bucketImpl[T]) prefixed(key string) string {
@@ -111,7 +122,11 @@ func (s *bucketImpl[T]) GetLatestRevision(ctx context.Context, key string) (Entr
 }
 
 func (s *bucketImpl[T]) Put(ctx context.Context, entry PutEntry[T]) (uint64, error) {
-	b, err := encodeBucketEntryHeader(entry.Header(), entry.Value())
+	h := entry.Header()
+	if s.contentEncoding != 0 {
+		codec.SetContentEncoding(h, s.contentEncoding)
+	}
+	b, err := encodeBucketEntryHeader(h, entry.Value())
 	if err != nil {
 		return 0, err
 	}
@@ -119,7 +134,11 @@ func (s *bucketImpl[T]) Put(ctx context.Context, entry PutEntry[T]) (uint64, err
 }
 
 func (s *bucketImpl[T]) Update(ctx context.Context, entry UpdateEntry[T]) (uint64, error) {
-	b, err := encodeBucketEntryHeader(entry.Header(), entry.Value())
+	h := entry.Header()
+	if s.contentEncoding != 0 {
+		codec.SetContentEncoding(h, s.contentEncoding)
+	}
+	b, err := encodeBucketEntryHeader(h, entry.Value())
 	if err != nil {
 		return 0, err
 	}
