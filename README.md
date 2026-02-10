@@ -193,6 +193,16 @@ Peanats automatically selects serialization format based on message content-type
 - `application/msgpack` - MessagePack
 - `application/protobuf` - Protocol Buffers
 
+## Versioning
+
+This project follows [EffVer](https://jacobtomlinson.dev/effver/) (Effort Versioning) rather than strict SemVer, using the **MACRO.MESO.MICRO** scheme:
+
+- **MACRO** bumps signal fundamental rethinks — currently frozen at 0
+- **MESO** bumps introduce new features and may include breaking changes
+- **MICRO** bumps are bug fixes and non-breaking improvements
+
+Peanats is on the **0.x track** indefinitely. There are no plans for a 1.0 release — the API is stable enough for production use but reserves the right to evolve. When breaking changes occur at MESO boundaries, migration guidance is provided in [UPGRADING.md](UPGRADING.md).
+
 ## AI-Assisted Development
 
 This project is developed with substantial AI assistance ([Claude Code](https://docs.anthropic.com/en/docs/claude-code)). Every design decision, interface contract, and architectural trade-off is human-directed and human-reviewed. AI accelerates implementation; it does not drive it.

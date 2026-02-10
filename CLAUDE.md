@@ -6,6 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Peanats is a generic typed handlers framework for NATS messaging in Go. It provides type-parametrized interfaces for various messaging patterns including publisher/subscriber, producer/consumer, and request/reply patterns.
 
+## Versioning
+
+- EffVer (Effort Versioning), not strict SemVer: https://jacobtomlinson.dev/effver/
+- MACRO.MESO.MICRO: MACRO frozen at 0, MESO = new features (may break), MICRO = fixes
+- 0.x track indefinitely — no planned 1.0
+- Breaking changes at MESO boundaries with migration guidance in UPGRADING.md
+
 ## Branching
 
 - Use branch naming format: `<github-handle>/<branch-name>`
@@ -217,8 +224,24 @@ Each package implements a specific messaging pattern with full type safety:
 - Deleted: `subm.go` (Submitter, SubmitterFunc, DefaultSubmitter), `err.go` (ErrorHandler, ErrorHandlerFunc, DefaultErrorHandler)
 - All call sites updated: transport, subscriber, consumer, bucket, pond
 
+#### Content-Encoding Compression Layer
+
+- HTTP-style `Content-Encoding` header overlay for message compression, orthogonal to `Content-Type`
+- `Compressor` interface: `Compress([]byte)`, `Decompress([]byte)`, `ContentEncoding()`
+- Two algorithms via `klauspost/compress` (promoted to direct dep): Zstd (best ratio/speed), S2 (fastest)
+- Zstd uses singleton `sync.Once` encoder/decoder (goroutine-safe `EncodeAll`/`DecodeAll`)
+- S2 uses stateless `s2.Encode`/`s2.Decode` functions
+- Registry pattern in `codec/encodings.go` mirrors `codec/codecs.go`
+- `MarshalHeader`: marshal → compress (if Content-Encoding set)
+- `UnmarshalHeader`: decompress (if Content-Encoding set) → unmarshal
+- `publisher.WithContentEncoding` option; publisher refactored to use `MarshalHeader` unified path
+- `requester.RequestContentEncoding` option; sets header, `MarshalHeader` handles compression
+- `bucket.BucketContentEncoding` option; compress/decompress in multipart encode/decode helpers
+- Fully backward compatible: no Content-Encoding header = zero overhead, unchanged behavior
+
 ### Changelog
 
+- 2026-02-10: Content-Encoding compression layer: zstd + s2 support in codec, publisher, requester, bucket
 - 2026-02-09: Replaced Submitter + ErrorHandler with Dispatcher interface; deleted `subm.go` and `err.go`
 - 2026-02-09: Moved `Unsubscriber` and `Subscription` interfaces from root to `transport/` package; deleted `interfaces.go`
 - 2026-02-09: v0.22.0 — Extracted codec/ and transport/ packages from root; fixed queue subscription bug; resolved naming collisions
