@@ -455,3 +455,212 @@ peanats_processed_total{status="success",subject="test.subject"} 1
 	compareErr := testutil.GatherAndCompare(registry, strings.NewReader(expected), "peanats_processed_total")
 	assert.NoError(t, compareErr, "Processed counter should be incremented")
 }
+
+func TestSubjectDepth(t *testing.T) {
+	tests := []struct {
+		name    string
+		depth   int
+		subject string
+		want    string
+	}{
+		{"depth 1", 1, "a.b.c.d", "a"},
+		{"depth 2", 2, "a.b.c.d", "a.b"},
+		{"depth 3", 3, "a.b.c.d", "a.b.c"},
+		{"depth equal to tokens", 4, "a.b.c.d", "a.b.c.d"},
+		{"depth exceeds tokens", 10, "a.b.c.d", "a.b.c.d"},
+		{"single token", 2, "a", "a"},
+		{"empty subject", 2, "", ""},
+		{"zero depth collapses", 0, "a.b.c", ""},
+		{"negative depth collapses", -1, "a.b.c", ""},
+		{"real jetstream subject", 5, "up.eu.monitoring.v1beta7.checkexecutionrequested.tenant-42.entity-abc", "up.eu.monitoring.v1beta7.checkexecutionrequested"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := SubjectDepth(tt.depth)(tt.subject)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestSubjectConstant(t *testing.T) {
+	assert.Equal(t, "fixed", SubjectConstant("fixed")("a.b.c"))
+	assert.Equal(t, "", SubjectConstant("")("a.b.c"))
+	assert.Equal(t, "", SubjectConstant("")(""))
+}
+
+func TestPrometheusMiddleware_SubjectMapper_CollapsesCardinality(t *testing.T) {
+	// Create a new registry for this test
+	registry := prometheus.NewRegistry()
+
+	// Two messages with different full subjects that share a common prefix.
+	msg1 := peanatsmock.NewMsg(t)
+	msg1.EXPECT().Subject().Return("up.eu.monitoring.v1.entity-abc").Maybe()
+	msg1.EXPECT().Data().Return([]byte("data")).Maybe()
+	msg1.EXPECT().Header().Return(peanats.Header{}).Maybe()
+
+	msg2 := peanatsmock.NewMsg(t)
+	msg2.EXPECT().Subject().Return("up.eu.monitoring.v1.entity-xyz").Maybe()
+	msg2.EXPECT().Data().Return([]byte("data")).Maybe()
+	msg2.EXPECT().Header().Return(peanats.Header{}).Maybe()
+
+	// Truncate to 4 tokens so both messages collapse to the same label value.
+	middleware := Middleware(
+		MiddlewareRegisterer(registry),
+		MiddlewareSubjectMapper(SubjectDepth(4)),
+	)
+
+	handler := peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
+		return nil
+	})
+	wrapped := middleware(handler)
+
+	require.NoError(t, wrapped.HandleMsg(context.Background(), msg1))
+	require.NoError(t, wrapped.HandleMsg(context.Background(), msg2))
+
+	// Both messages should be counted under the truncated subject.
+	expected := `
+# HELP peanats_processed_total Total number of messages processed
+# TYPE peanats_processed_total counter
+peanats_processed_total{status="success",subject="up.eu.monitoring.v1"} 2
+`
+	compareErr := testutil.GatherAndCompare(registry, strings.NewReader(expected), "peanats_processed_total")
+	assert.NoError(t, compareErr)
+}
+
+func TestPrometheusMiddleware_SubjectMapper_ConstantEmpty(t *testing.T) {
+	// Create a new registry for this test
+	registry := prometheus.NewRegistry()
+
+	// Two messages with completely unrelated subjects.
+	msg1 := peanatsmock.NewMsg(t)
+	msg1.EXPECT().Subject().Return("foo.bar").Maybe()
+	msg1.EXPECT().Data().Return([]byte("data")).Maybe()
+	msg1.EXPECT().Header().Return(peanats.Header{}).Maybe()
+
+	msg2 := peanatsmock.NewMsg(t)
+	msg2.EXPECT().Subject().Return("baz.qux.quux").Maybe()
+	msg2.EXPECT().Data().Return([]byte("data")).Maybe()
+	msg2.EXPECT().Header().Return(peanats.Header{}).Maybe()
+
+	// Collapse every subject to an empty label — effectively disables the
+	// subject dimension for cardinality purposes.
+	middleware := Middleware(
+		MiddlewareRegisterer(registry),
+		MiddlewareSubjectMapper(SubjectConstant("")),
+	)
+
+	handler := peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
+		return nil
+	})
+	wrapped := middleware(handler)
+
+	require.NoError(t, wrapped.HandleMsg(context.Background(), msg1))
+	require.NoError(t, wrapped.HandleMsg(context.Background(), msg2))
+
+	expected := `
+# HELP peanats_processed_total Total number of messages processed
+# TYPE peanats_processed_total counter
+peanats_processed_total{status="success",subject=""} 2
+`
+	compareErr := testutil.GatherAndCompare(registry, strings.NewReader(expected), "peanats_processed_total")
+	assert.NoError(t, compareErr)
+}
+
+func TestPrometheusMiddleware_DefaultSubjectMapper(t *testing.T) {
+	// The default middleware (no MiddlewareSubjectMapper option) should apply
+	// SubjectDepth(DefaultSubjectDepth) to bound cardinality out of the box.
+	registry := prometheus.NewRegistry()
+
+	// Subject with dynamic tail tokens beyond the default depth.
+	mockMsg := peanatsmock.NewMsg(t)
+	mockMsg.EXPECT().Subject().Return("orders.v1.created.tenant-42.entity-abc").Maybe()
+	mockMsg.EXPECT().Data().Return([]byte("data")).Maybe()
+	mockMsg.EXPECT().Header().Return(peanats.Header{}).Maybe()
+
+	middleware := Middleware(MiddlewareRegisterer(registry))
+
+	handler := peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
+		return nil
+	})
+	wrapped := middleware(handler)
+	require.NoError(t, wrapped.HandleMsg(context.Background(), mockMsg))
+
+	// Expect the subject to be truncated to the first DefaultSubjectDepth tokens.
+	expected := `
+# HELP peanats_processed_total Total number of messages processed
+# TYPE peanats_processed_total counter
+peanats_processed_total{status="success",subject="orders.v1.created"} 1
+`
+	compareErr := testutil.GatherAndCompare(registry, strings.NewReader(expected), "peanats_processed_total")
+	assert.NoError(t, compareErr)
+}
+
+func TestPrometheusMiddleware_ExplicitNilMapperDisablesDefault(t *testing.T) {
+	// Passing MiddlewareSubjectMapper(nil) explicitly should disable the
+	// default and yield pass-through behavior (raw subject).
+	registry := prometheus.NewRegistry()
+
+	mockMsg := peanatsmock.NewMsg(t)
+	mockMsg.EXPECT().Subject().Return("orders.v1.created.tenant-42.entity-abc").Maybe()
+	mockMsg.EXPECT().Data().Return([]byte("data")).Maybe()
+	mockMsg.EXPECT().Header().Return(peanats.Header{}).Maybe()
+
+	middleware := Middleware(
+		MiddlewareRegisterer(registry),
+		MiddlewareSubjectMapper(nil),
+	)
+
+	handler := peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
+		return nil
+	})
+	wrapped := middleware(handler)
+	require.NoError(t, wrapped.HandleMsg(context.Background(), mockMsg))
+
+	expected := `
+# HELP peanats_processed_total Total number of messages processed
+# TYPE peanats_processed_total counter
+peanats_processed_total{status="success",subject="orders.v1.created.tenant-42.entity-abc"} 1
+`
+	compareErr := testutil.GatherAndCompare(registry, strings.NewReader(expected), "peanats_processed_total")
+	assert.NoError(t, compareErr)
+}
+
+func TestPrometheusMiddleware_SubjectMapper_AppliedToAckCounters(t *testing.T) {
+	// Create a new registry for this test
+	registry := prometheus.NewRegistry()
+
+	// Ackable message with a dynamic subject segment.
+	mockMsg := peanatsmock.NewMsgJetstream(t)
+	mockMsg.EXPECT().Subject().Return("a.b.c.entity-42").Maybe()
+	mockMsg.EXPECT().Data().Return([]byte("data")).Maybe()
+	mockMsg.EXPECT().Header().Return(peanats.Header{}).Maybe()
+	mockMsg.EXPECT().Ack(context.Background()).Return(nil).Once()
+
+	// Depth-2 truncation.
+	middleware := Middleware(
+		MiddlewareRegisterer(registry),
+		MiddlewareSubjectMapper(SubjectDepth(2)),
+	)
+
+	handler := peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
+		ackable, ok := msg.(peanats.Ackable)
+		require.True(t, ok)
+		return ackable.Ack(ctx)
+	})
+	wrapped := middleware(handler)
+	require.NoError(t, wrapped.HandleMsg(context.Background(), mockMsg))
+
+	// Both processed_total and acked_total should carry the truncated subject,
+	// not the raw one.
+	expected := `
+# HELP peanats_acked_total Total number of message acknowledgments
+# TYPE peanats_acked_total counter
+peanats_acked_total{subject="a.b",type="ack"} 1
+# HELP peanats_processed_total Total number of messages processed
+# TYPE peanats_processed_total counter
+peanats_processed_total{status="success",subject="a.b"} 1
+`
+	compareErr := testutil.GatherAndCompare(registry, strings.NewReader(expected), "peanats_acked_total", "peanats_processed_total")
+	assert.NoError(t, compareErr)
+}

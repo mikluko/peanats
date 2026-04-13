@@ -10,13 +10,59 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+// SubjectMapper transforms a NATS subject into a label value. It is used to
+// normalize subjects with dynamic segments (e.g. entity IDs) into a bounded
+// set of label values, preventing unbounded Prometheus metric cardinality.
+type SubjectMapper func(subject string) string
+
+// SubjectDepth returns a SubjectMapper that truncates subjects to the first n
+// dot-separated tokens. For example, SubjectDepth(3) maps "a.b.c.d.e" to "a.b.c".
+// A non-positive n returns an empty string for all subjects, effectively
+// collapsing cardinality to a single bucket.
+func SubjectDepth(n int) SubjectMapper {
+	return func(subject string) string {
+		if n <= 0 {
+			return ""
+		}
+		depth := 0
+		for i := 0; i < len(subject); i++ {
+			if subject[i] == '.' {
+				depth++
+				if depth == n {
+					return subject[:i]
+				}
+			}
+		}
+		return subject
+	}
+}
+
+// SubjectConstant returns a SubjectMapper that always yields the given value,
+// regardless of the input subject. Useful to collapse a high-cardinality
+// stream into a single label value or to effectively disable the subject
+// label by passing "".
+func SubjectConstant(value string) SubjectMapper {
+	return func(string) string {
+		return value
+	}
+}
+
+// DefaultSubjectDepth is the depth used by the default SubjectMapper. It keeps
+// the first three dot-separated tokens of each subject, which is a reasonable
+// compromise between observability and cardinality: it retains enough prefix
+// to distinguish logical streams (e.g. "orders.v1.created") while discarding
+// dynamic tails (tenant IDs, entity IDs, sequence numbers).
+const DefaultSubjectDepth = 3
+
 // Option configures Prometheus middleware
 type Option func(*params)
 
 type params struct {
-	namespace  string
-	subsystem  string
-	registerer prometheus.Registerer
+	namespace        string
+	subsystem        string
+	registerer       prometheus.Registerer
+	subjectMapper    SubjectMapper
+	subjectMapperSet bool
 }
 
 // MiddlewareNamespace sets the Prometheus namespace for metrics
@@ -40,6 +86,21 @@ func MiddlewareRegisterer(registerer prometheus.Registerer) Option {
 	}
 }
 
+// MiddlewareSubjectMapper installs a SubjectMapper that normalizes subjects
+// before they are used as the value of the "subject" label. Use this to
+// prevent unbounded metric cardinality when subjects contain dynamic segments.
+//
+// If this option is not supplied, the middleware uses SubjectDepth(DefaultSubjectDepth)
+// as a safe default. Pass SubjectConstant(...) or a custom mapper (including a
+// pass-through `func(s string) string { return s }`) to override. Passing nil
+// explicitly also yields pass-through behavior.
+func MiddlewareSubjectMapper(mapper SubjectMapper) Option {
+	return func(p *params) {
+		p.subjectMapper = mapper
+		p.subjectMapperSet = true
+	}
+}
+
 // Middleware creates a peanats.MsgMiddleware that records message processing metrics
 func Middleware(opts ...Option) peanats.MsgMiddleware {
 	// Apply default configuration
@@ -50,6 +111,9 @@ func Middleware(opts ...Option) peanats.MsgMiddleware {
 	}
 	for _, opt := range opts {
 		opt(&p)
+	}
+	if !p.subjectMapperSet {
+		p.subjectMapper = SubjectDepth(DefaultSubjectDepth)
 	}
 
 	// Total number of messages processed by subject and status
@@ -88,11 +152,15 @@ func Middleware(opts ...Option) peanats.MsgMiddleware {
 	return func(next peanats.MsgHandler) peanats.MsgHandler {
 		return peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
 			subject := msg.Subject()
+			if p.subjectMapper != nil {
+				subject = p.subjectMapper(subject)
+			}
 
 			// Wrap ackable messages to track acknowledgment metrics
 			if _, ok := msg.(peanats.Ackable); ok {
 				msg = &ackableWrapper{
 					Msg:     msg,
+					subject: subject,
 					counter: msgsAcked,
 				}
 			}
@@ -125,42 +193,43 @@ func Middleware(opts ...Option) peanats.MsgMiddleware {
 // ackableWrapper wraps an Ackable message to track acknowledgment metrics
 type ackableWrapper struct {
 	peanats.Msg
+	subject string
 	counter *prometheus.CounterVec
 }
 
 func (a *ackableWrapper) Ack(ctx context.Context) error {
 	err := a.Msg.(peanats.Ackable).Ack(ctx)
-	a.counter.WithLabelValues(a.Subject(), "ack").Inc()
+	a.counter.WithLabelValues(a.subject, "ack").Inc()
 	return err
 }
 
 func (a *ackableWrapper) Nak(ctx context.Context) error {
 	err := a.Msg.(peanats.Ackable).Nak(ctx)
-	a.counter.WithLabelValues(a.Subject(), "nak").Inc()
+	a.counter.WithLabelValues(a.subject, "nak").Inc()
 	return err
 }
 
 func (a *ackableWrapper) NackWithDelay(ctx context.Context, delay time.Duration) error {
 	err := a.Msg.(peanats.Ackable).NackWithDelay(ctx, delay)
-	a.counter.WithLabelValues(a.Subject(), "nak").Inc()
+	a.counter.WithLabelValues(a.subject, "nak").Inc()
 	return err
 }
 
 func (a *ackableWrapper) Term(ctx context.Context) error {
 	err := a.Msg.(peanats.Ackable).Term(ctx)
-	a.counter.WithLabelValues(a.Subject(), "term").Inc()
+	a.counter.WithLabelValues(a.subject, "term").Inc()
 	return err
 }
 
 func (a *ackableWrapper) TermWithReason(ctx context.Context, reason string) error {
 	err := a.Msg.(peanats.Ackable).TermWithReason(ctx, reason)
-	a.counter.WithLabelValues(a.Subject(), "term").Inc()
+	a.counter.WithLabelValues(a.subject, "term").Inc()
 	return err
 }
 
 func (a *ackableWrapper) InProgress(ctx context.Context) error {
 	err := a.Msg.(peanats.Ackable).InProgress(ctx)
-	a.counter.WithLabelValues(a.Subject(), "in_progress").Inc()
+	a.counter.WithLabelValues(a.subject, "in_progress").Inc()
 	return err
 }
 
