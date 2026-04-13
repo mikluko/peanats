@@ -567,6 +567,65 @@ peanats_processed_total{status="success",subject=""} 2
 	assert.NoError(t, compareErr)
 }
 
+func TestPrometheusMiddleware_DefaultSubjectMapper(t *testing.T) {
+	// The default middleware (no MiddlewareSubjectMapper option) should apply
+	// SubjectDepth(DefaultSubjectDepth) to bound cardinality out of the box.
+	registry := prometheus.NewRegistry()
+
+	// Subject with dynamic tail tokens beyond the default depth.
+	mockMsg := peanatsmock.NewMsg(t)
+	mockMsg.EXPECT().Subject().Return("orders.v1.created.tenant-42.entity-abc").Maybe()
+	mockMsg.EXPECT().Data().Return([]byte("data")).Maybe()
+	mockMsg.EXPECT().Header().Return(peanats.Header{}).Maybe()
+
+	middleware := Middleware(MiddlewareRegisterer(registry))
+
+	handler := peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
+		return nil
+	})
+	wrapped := middleware(handler)
+	require.NoError(t, wrapped.HandleMsg(context.Background(), mockMsg))
+
+	// Expect the subject to be truncated to the first DefaultSubjectDepth tokens.
+	expected := `
+# HELP peanats_processed_total Total number of messages processed
+# TYPE peanats_processed_total counter
+peanats_processed_total{status="success",subject="orders.v1.created"} 1
+`
+	compareErr := testutil.GatherAndCompare(registry, strings.NewReader(expected), "peanats_processed_total")
+	assert.NoError(t, compareErr)
+}
+
+func TestPrometheusMiddleware_ExplicitNilMapperDisablesDefault(t *testing.T) {
+	// Passing MiddlewareSubjectMapper(nil) explicitly should disable the
+	// default and yield pass-through behavior (raw subject).
+	registry := prometheus.NewRegistry()
+
+	mockMsg := peanatsmock.NewMsg(t)
+	mockMsg.EXPECT().Subject().Return("orders.v1.created.tenant-42.entity-abc").Maybe()
+	mockMsg.EXPECT().Data().Return([]byte("data")).Maybe()
+	mockMsg.EXPECT().Header().Return(peanats.Header{}).Maybe()
+
+	middleware := Middleware(
+		MiddlewareRegisterer(registry),
+		MiddlewareSubjectMapper(nil),
+	)
+
+	handler := peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
+		return nil
+	})
+	wrapped := middleware(handler)
+	require.NoError(t, wrapped.HandleMsg(context.Background(), mockMsg))
+
+	expected := `
+# HELP peanats_processed_total Total number of messages processed
+# TYPE peanats_processed_total counter
+peanats_processed_total{status="success",subject="orders.v1.created.tenant-42.entity-abc"} 1
+`
+	compareErr := testutil.GatherAndCompare(registry, strings.NewReader(expected), "peanats_processed_total")
+	assert.NoError(t, compareErr)
+}
+
 func TestPrometheusMiddleware_SubjectMapper_AppliedToAckCounters(t *testing.T) {
 	// Create a new registry for this test
 	registry := prometheus.NewRegistry()

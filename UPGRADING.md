@@ -1,5 +1,64 @@
 # Upgrading
 
+## v0.24.x → v0.25.0
+
+### Summary
+
+`contrib/prom` now truncates the `subject` label to the first three
+dot-separated tokens by default, bounding Prometheus metric cardinality on
+JetStream consumers whose subjects contain dynamic tails (tenant IDs, entity
+IDs, sequence numbers). Prior releases used the raw subject, which could
+exhaust memory within minutes on high-fanout streams (#25).
+
+This is a label-schema break: any dashboard, alert, or recording rule keyed
+on the full subject will see a truncated value after the upgrade. Existing
+series at the old cardinality remain in the TSDB until they age out — queries
+that join across the cut-over point should use regex matching on the label.
+
+### Action required
+
+Callers who need the previous behavior must restore it explicitly:
+
+```go
+// Pass-through: use the raw subject as-is (pre-0.25 default).
+// WARNING: susceptible to the unbounded-cardinality OOM described in #25.
+_ = prom.Middleware(
+    prom.MiddlewareSubjectMapper(nil),
+)
+```
+
+Callers who want a different bound can pick their own:
+
+```go
+// Keep the first 5 tokens instead of the default 3.
+_ = prom.Middleware(
+    prom.MiddlewareSubjectMapper(prom.SubjectDepth(5)),
+)
+
+// Or collapse the subject dimension entirely.
+_ = prom.Middleware(
+    prom.MiddlewareSubjectMapper(prom.SubjectConstant("")),
+)
+
+// Or a custom mapping function.
+_ = prom.Middleware(
+    prom.MiddlewareSubjectMapper(func(s string) string {
+        // ... e.g. strip UUIDs, apply per-stream rules, etc.
+        return s
+    }),
+)
+```
+
+### Dashboards & alerts
+
+Subject values in recorded metrics will change from e.g.
+`orders.v1.created.tenant-42.entity-abc` to `orders.v1.created`. Update any
+PromQL selectors that pin the full subject. Most dashboards aggregating with
+`sum by (subject) (...)` will keep working but will show fewer, coarser
+series.
+
+---
+
 ## v0.22.x → v0.23.0
 
 ### Summary

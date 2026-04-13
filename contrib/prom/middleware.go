@@ -47,14 +47,22 @@ func SubjectConstant(value string) SubjectMapper {
 	}
 }
 
+// DefaultSubjectDepth is the depth used by the default SubjectMapper. It keeps
+// the first three dot-separated tokens of each subject, which is a reasonable
+// compromise between observability and cardinality: it retains enough prefix
+// to distinguish logical streams (e.g. "orders.v1.created") while discarding
+// dynamic tails (tenant IDs, entity IDs, sequence numbers).
+const DefaultSubjectDepth = 3
+
 // Option configures Prometheus middleware
 type Option func(*params)
 
 type params struct {
-	namespace     string
-	subsystem     string
-	registerer    prometheus.Registerer
-	subjectMapper SubjectMapper
+	namespace        string
+	subsystem        string
+	registerer       prometheus.Registerer
+	subjectMapper    SubjectMapper
+	subjectMapperSet bool
 }
 
 // MiddlewareNamespace sets the Prometheus namespace for metrics
@@ -82,11 +90,14 @@ func MiddlewareRegisterer(registerer prometheus.Registerer) Option {
 // before they are used as the value of the "subject" label. Use this to
 // prevent unbounded metric cardinality when subjects contain dynamic segments.
 //
-// Without this option, the full subject is used as-is, which matches the
-// default behavior of prior releases.
+// If this option is not supplied, the middleware uses SubjectDepth(DefaultSubjectDepth)
+// as a safe default. Pass SubjectConstant(...) or a custom mapper (including a
+// pass-through `func(s string) string { return s }`) to override. Passing nil
+// explicitly also yields pass-through behavior.
 func MiddlewareSubjectMapper(mapper SubjectMapper) Option {
 	return func(p *params) {
 		p.subjectMapper = mapper
+		p.subjectMapperSet = true
 	}
 }
 
@@ -94,13 +105,15 @@ func MiddlewareSubjectMapper(mapper SubjectMapper) Option {
 func Middleware(opts ...Option) peanats.MsgMiddleware {
 	// Apply default configuration
 	p := params{
-		namespace:     "peanats",
-		subsystem:     "",
-		registerer:    prometheus.DefaultRegisterer,
-		subjectMapper: nil,
+		namespace:  "peanats",
+		subsystem:  "",
+		registerer: prometheus.DefaultRegisterer,
 	}
 	for _, opt := range opts {
 		opt(&p)
+	}
+	if !p.subjectMapperSet {
+		p.subjectMapper = SubjectDepth(DefaultSubjectDepth)
 	}
 
 	// Total number of messages processed by subject and status
