@@ -119,6 +119,16 @@ Each package implements a specific messaging pattern with full type safety:
 
 ### Notes
 
+#### Prometheus Middleware Subject Cardinality Control (#25)
+
+- `contrib/prom` now supports normalizing the `subject` label via a `SubjectMapper`
+- New option `MiddlewareSubjectMapper(SubjectMapper)` installs a `func(string) string`
+- Helpers: `SubjectDepth(n)` keeps first `n` dot-separated tokens (n<=0 collapses to "")
+- Helpers: `SubjectConstant(v)` yields a fixed value (`SubjectConstant("")` effectively disables the subject dimension)
+- Backward compatible: default behavior (no mapper) preserves the full subject
+- Mapped subject computed once per message and threaded through `ackableWrapper`, so ack/nak/term counters match processed/latency/in_flight labels
+- Fixes OOM caused by unbounded label cardinality on JetStream subjects with dynamic tokens
+
 #### Prometheus Middleware Metadatable Interface Fix
 
 - Fixed prometheus middleware wrapper losing Metadatable interface from wrapped messages
@@ -241,6 +251,7 @@ Each package implements a specific messaging pattern with full type safety:
 
 ### Changelog
 
+- 2026-04-13: contrib/prom: `SubjectMapper` + `SubjectDepth`/`SubjectConstant` helpers to bound subject label cardinality (#25)
 - 2026-02-10: Content-Encoding compression layer: zstd + s2 support in codec, publisher, requester, bucket
 - 2026-02-09: Replaced Submitter + ErrorHandler with Dispatcher interface; deleted `subm.go` and `err.go`
 - 2026-02-09: Moved `Unsubscriber` and `Subscription` interfaces from root to `transport/` package; deleted `interfaces.go`
