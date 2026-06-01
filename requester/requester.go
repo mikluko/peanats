@@ -293,6 +293,7 @@ func (r *responseReceiverImpl[T]) Next(ctx context.Context) (_ Response[T], err 
 }
 
 func (r *responseReceiverImpl[T]) Stop() error {
-	close(r.buf)
+	// Unsubscribe joins the transport mirror goroutine and closes r.buf; the
+	// receiver must not close it itself (that would race the mirror's send).
 	return r.sub.Unsubscribe()
 }

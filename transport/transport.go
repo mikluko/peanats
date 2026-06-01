@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/nats-io/nats.go"
 
@@ -26,6 +27,11 @@ type Conn interface {
 	Publish(ctx context.Context, msg peanats.Msg) error
 	Request(ctx context.Context, msg peanats.Msg) (peanats.Msg, error)
 	Subscribe(ctx context.Context, subj string, opts ...SubscribeOption) (Subscription, error)
+	// SubscribeChan delivers messages to the caller-supplied channel. peanats
+	// owns the send side of ch: the caller must only receive from it and must
+	// never close it. Calling Unsubscribe stops NATS delivery, joins the
+	// internal mirror goroutine, and then closes ch. The caller can detect
+	// teardown via a receive returning the zero value with ok == false.
 	SubscribeChan(ctx context.Context, subj string, ch chan peanats.Msg, opts ...SubscribeChanOption) (Unsubscriber, error)
 	SubscribeHandler(ctx context.Context, subj string, handler peanats.MsgHandler, opts ...SubscribeHandlerOption) (Unsubscriber, error)
 	Drain() error
@@ -180,22 +186,6 @@ func (c *connImpl) SubscribeHandler(ctx context.Context, subj string, h peanats.
 	}
 }
 
-func (c *connImpl) mirror(mch chan peanats.Msg) chan *nats.Msg {
-	nch := make(chan *nats.Msg, cap(mch))
-	go func() {
-		defer func() {
-			if recover() != nil {
-				for range nch {
-				}
-			}
-		}()
-		for msg := range nch {
-			mch <- peanats.NewMsg(msg)
-		}
-	}()
-	return nch
-}
-
 // SubscribeChanOption configures channel-based subscriptions.
 type SubscribeChanOption func(*subscribeChanParams)
 
@@ -215,19 +205,64 @@ func (c *connImpl) SubscribeChan(_ context.Context, subj string, ch chan peanats
 	for _, o := range opts {
 		o(&p)
 	}
+	// nch is the channel NATS delivers into; the mirror goroutine is its sole
+	// reader and ch's sole sender. This keeps ownership well-defined: NATS owns
+	// nch, peanats owns ch.
+	nch := make(chan *nats.Msg, cap(ch))
 	var (
 		sub *nats.Subscription
 		err error
 	)
 	if p.queue != "" {
-		sub, err = c.nc.ChanQueueSubscribe(subj, p.queue, c.mirror(ch))
+		sub, err = c.nc.ChanQueueSubscribe(subj, p.queue, nch)
 	} else {
-		sub, err = c.nc.ChanSubscribe(subj, c.mirror(ch))
+		sub, err = c.nc.ChanSubscribe(subj, nch)
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &subscriptionImpl{sub}, nil
+	quit := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		// peanats is the sole sender on ch, so it closes it on teardown.
+		defer close(ch)
+		for {
+			select {
+			case <-quit:
+				return
+			case msg, ok := <-nch:
+				if !ok {
+					return
+				}
+				select {
+				case ch <- peanats.NewMsg(msg):
+				case <-quit:
+					return
+				}
+			}
+		}
+	}()
+	return &chanSubscriptionImpl{sub: sub, quit: quit, done: done}, nil
+}
+
+type chanSubscriptionImpl struct {
+	sub  *nats.Subscription
+	quit chan struct{}
+	done chan struct{}
+	once sync.Once
+}
+
+func (s *chanSubscriptionImpl) Unsubscribe() error {
+	// Stop NATS delivery first so nothing new lands in nch, then signal the
+	// mirror goroutine to stop and wait for it to drain and close the caller's
+	// channel.
+	err := s.sub.Unsubscribe()
+	s.once.Do(func() {
+		close(s.quit)
+	})
+	<-s.done
+	return err
 }
 
 type subscriptionImpl struct {
