@@ -1,5 +1,49 @@
 # Upgrading
 
+## v0.25.x → v0.26.0
+
+### Summary
+
+`transport.Conn.SubscribeChan` now has a defined channel-ownership model.
+peanats owns the send side of the caller-supplied channel: it is the sole
+sender and it closes the channel on `Unsubscribe`. Callers must only receive
+from the channel and must **never** close it. `Unsubscribe` stops NATS
+delivery, joins the internal mirror goroutine, and then closes the channel
+(#28).
+
+Previously the channel had undefined teardown: the only implied way to stop
+the mirror goroutine was for the caller to close the channel, which raced the
+goroutine's send (flagged by `go test -race`) and leaked the goroutine on
+`Unsubscribe`. Both the data race and the goroutine leak are now fixed.
+
+### Action required
+
+If your code closed the channel returned/passed to `SubscribeChan`, remove the
+`close`. Closing it now double-closes (peanats already closes it) and panics.
+
+```go
+// Before — racy, and now panics:
+sub.Unsubscribe()
+close(ch)
+
+// After — peanats closes ch for you:
+sub.Unsubscribe()
+```
+
+Detect teardown by receiving the zero value with `ok == false`:
+
+```go
+for msg := range ch { // ranges until peanats closes ch on Unsubscribe
+    // ...
+}
+```
+
+The `requester` package already follows this model internally;
+`ResponseReceiver.Stop()` no longer closes its buffer and needs no change from
+callers.
+
+---
+
 ## v0.24.x → v0.25.0
 
 ### Summary

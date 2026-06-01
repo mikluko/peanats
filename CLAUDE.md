@@ -119,6 +119,17 @@ Each package implements a specific messaging pattern with full type safety:
 
 ### Notes
 
+#### SubscribeChan Channel Ownership (#28)
+
+- `transport.Conn.SubscribeChan`: peanats owns send side of caller's channel; sole sender, closes it on `Unsubscribe`
+- Caller must only receive, never close (double-close panics)
+- Internal `mirror` goroutine replaced: now reads NATS `nch`, mirrors to caller `ch`, selects on `quit`
+- `chanSubscriptionImpl.Unsubscribe`: NATS `Unsubscribe` first (stop delivery into nch), then `close(quit)` (once), then `<-done` (join goroutine, which closes ch via defer)
+- Inner `select { case ch <- ...; case <-quit }` lets teardown proceed even when caller stopped receiving (full buffer / blocked send)
+- Removed old `recover()`+drain hack that relied on send-on-closed panic; that was the data race + goroutine leak
+- `requester.responseReceiverImpl.Stop()` no longer `close(r.buf)`; Unsubscribe closes it
+- Breaking change documented in UPGRADING.md under v0.25.x → v0.26.0
+
 #### Prometheus Middleware Subject Cardinality Control (#25)
 
 - `contrib/prom` normalizes the `subject` label via a `SubjectMapper`
@@ -253,6 +264,7 @@ Each package implements a specific messaging pattern with full type safety:
 
 ### Changelog
 
+- 2026-06-01: transport: SubscribeChan defined channel ownership; Unsubscribe joins mirror goroutine and closes caller channel (breaking: callers must not close); fixes data race + goroutine leak (#28)
 - 2026-04-13: v0.25.0 — contrib/prom default subject mapper is now `SubjectDepth(3)` (breaking: restore with `MiddlewareSubjectMapper(nil)`); see UPGRADING.md (#25)
 - 2026-04-13: contrib/prom: `SubjectMapper` + `SubjectDepth`/`SubjectConstant` helpers to bound subject label cardinality (#25)
 - 2026-02-10: Content-Encoding compression layer: zstd + s2 support in codec, publisher, requester, bucket
