@@ -119,6 +119,15 @@ Each package implements a specific messaging pattern with full type safety:
 
 ### Notes
 
+#### Bucket Content-Type Default (#30)
+
+- `bucket.BucketContentType(codec.ContentType)` sets default marshaling codec at bucket level
+- Mirrors `BucketContentEncoding` pattern; both injected via `bucketImpl.applyDefaults(h)` before encode
+- Fallback-only: applied only when entry `Header()` has no `Content-Type`; explicit entry header wins
+- Default unset (`0`): unchanged behavior (entries fall back to JSON via `codec.ForHeader`)
+- Reads unaffected: decode always selects codec from each stored entry's header, so mixed-codec buckets are safe
+- Use case: stage KV migration `Protojson` → `Protobin` without editing shared entry constructors
+
 #### SubscribeChan Channel Ownership (#28)
 
 - `transport.Conn.SubscribeChan`: peanats owns send side of caller's channel; sole sender, closes it on `Unsubscribe`
@@ -264,6 +273,7 @@ Each package implements a specific messaging pattern with full type safety:
 
 ### Changelog
 
+- 2026-06-09: bucket: `BucketContentType` option sets default marshaling codec at bucket level (fallback-only, explicit entry header wins) (#30)
 - 2026-06-01: transport: SubscribeChan defined channel ownership; Unsubscribe joins mirror goroutine and closes caller channel (breaking: callers must not close); fixes data race + goroutine leak (#28)
 - 2026-04-13: v0.25.0 — contrib/prom default subject mapper is now `SubjectDepth(3)` (breaking: restore with `MiddlewareSubjectMapper(nil)`); see UPGRADING.md (#25)
 - 2026-04-13: contrib/prom: `SubjectMapper` + `SubjectDepth`/`SubjectConstant` helpers to bound subject label cardinality (#25)

@@ -196,6 +196,44 @@ func TestBucket_Put(t *testing.T) {
 	assert.Equal(t, uint64(1), rev)
 }
 
+func TestBucket_PutWithContentType(t *testing.T) {
+	t.Run("fallback applied when entry has no content-type", func(t *testing.T) {
+		const expect = "----\r\nContent-Type: application/yaml\r\nX-Breed: shavka\r\n\r\n" + "name: balooney\n"
+		e := testPutUpdateEntryImpl{
+			key: "parson.had.a.dog",
+			hdr: peanats.Header{"X-Breed": []string{"shavka"}},
+			mod: &testModel{Name: "balooney"},
+		}
+
+		nb := jetstreammock.NewKeyValue(t)
+		nb.EXPECT().Put(mock.Anything, e.key, []byte(expect)).Return(uint64(1), nil)
+
+		b := bucket.NewBucket[testModel](nb, bucket.BucketContentType(codec.YAML))
+		rev, err := b.Put(t.Context(), &e)
+
+		require.NoError(t, err)
+		assert.Equal(t, uint64(1), rev)
+	})
+
+	t.Run("explicit entry content-type wins over bucket default", func(t *testing.T) {
+		const expect = "----\r\nContent-Type: application/json\r\n\r\n" + `{"name":"balooney"}`
+		e := testPutUpdateEntryImpl{
+			key: "parson.had.a.dog",
+			hdr: peanats.Header{codec.HeaderContentType: []string{codec.JSON.String()}},
+			mod: &testModel{Name: "balooney"},
+		}
+
+		nb := jetstreammock.NewKeyValue(t)
+		nb.EXPECT().Put(mock.Anything, e.key, []byte(expect)).Return(uint64(1), nil)
+
+		b := bucket.NewBucket[testModel](nb, bucket.BucketContentType(codec.YAML))
+		rev, err := b.Put(t.Context(), &e)
+
+		require.NoError(t, err)
+		assert.Equal(t, uint64(1), rev)
+	})
+}
+
 func TestBucket_Update(t *testing.T) {
 	e := testPutUpdateEntryImpl{
 		key: "parson.had.a.dog",

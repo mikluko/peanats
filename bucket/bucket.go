@@ -31,12 +31,14 @@ func NewBucket[T any](bucket jetstream.KeyValue, opts ...BucketOption) Bucket[T]
 	return &bucketImpl[T]{
 		bucket:          bucket,
 		prefix:          params.prefix,
+		contentType:     params.contentType,
 		contentEncoding: params.contentEncoding,
 	}
 }
 
 type bucketParams struct {
 	prefix          string
+	contentType     codec.ContentType
 	contentEncoding codec.ContentEncoding
 }
 
@@ -45,6 +47,16 @@ type BucketOption func(opts *bucketParams)
 func BucketKeyPrefix(prefix string) BucketOption {
 	return func(params *bucketParams) {
 		params.prefix = prefix
+	}
+}
+
+// BucketContentType sets the default marshaling codec for bucket entries.
+// It applies only as a fallback: an entry whose Header() already sets
+// Content-Type keeps its own codec. Reads are unaffected since the codec is
+// always selected from each stored entry's header.
+func BucketContentType(c codec.ContentType) BucketOption {
+	return func(params *bucketParams) {
+		params.contentType = c
 	}
 }
 
@@ -59,6 +71,7 @@ func BucketContentEncoding(e codec.ContentEncoding) BucketOption {
 type bucketImpl[T any] struct {
 	bucket          jetstream.KeyValue
 	prefix          string
+	contentType     codec.ContentType
 	contentEncoding codec.ContentEncoding
 }
 
@@ -121,11 +134,18 @@ func (s *bucketImpl[T]) GetLatestRevision(ctx context.Context, key string) (Entr
 	return s.get(entry)
 }
 
-func (s *bucketImpl[T]) Put(ctx context.Context, entry PutEntry[T]) (uint64, error) {
-	h := entry.Header()
+func (s *bucketImpl[T]) applyDefaults(h peanats.Header) {
+	if s.contentType != 0 && h.Get(codec.HeaderContentType) == "" {
+		h.Set(codec.HeaderContentType, s.contentType.String())
+	}
 	if s.contentEncoding != 0 {
 		codec.SetContentEncoding(h, s.contentEncoding)
 	}
+}
+
+func (s *bucketImpl[T]) Put(ctx context.Context, entry PutEntry[T]) (uint64, error) {
+	h := entry.Header()
+	s.applyDefaults(h)
 	b, err := encodeBucketEntryHeader(h, entry.Value())
 	if err != nil {
 		return 0, err
@@ -135,9 +155,7 @@ func (s *bucketImpl[T]) Put(ctx context.Context, entry PutEntry[T]) (uint64, err
 
 func (s *bucketImpl[T]) Update(ctx context.Context, entry UpdateEntry[T]) (uint64, error) {
 	h := entry.Header()
-	if s.contentEncoding != 0 {
-		codec.SetContentEncoding(h, s.contentEncoding)
-	}
+	s.applyDefaults(h)
 	b, err := encodeBucketEntryHeader(h, entry.Value())
 	if err != nil {
 		return 0, err
