@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/textproto"
+	"unicode/utf8"
 
 	"github.com/mikluko/peanats"
 	"go.opentelemetry.io/otel"
@@ -69,7 +70,9 @@ func MiddlewareWithEventHeaders() MiddlewareOption {
 }
 
 // MiddlewareWithEventData enables adding a span event with message data, truncated to the given length.
-// A zero or negative truncateAt means no truncation.
+// A zero or negative truncateAt means no truncation. The payload is recorded as the nats.data
+// attribute only when it is valid UTF-8; binary payloads are marked with nats.data_encoding=binary
+// instead, keeping the span exportable.
 func MiddlewareWithEventData(truncateAt int) MiddlewareOption {
 	return func(o *middlewareOptions) {
 		o.eventData = true
@@ -122,24 +125,10 @@ func Middleware(opts ...MiddlewareOption) peanats.MsgMiddleware {
 				}
 			}
 			if cfg.eventHeaders {
-				for name, values := range msg.Header() {
-					name = textproto.CanonicalMIMEHeaderKey(name)
-					for _, v := range values {
-						eventAttrs = append(eventAttrs, attribute.String(fmt.Sprintf("nats.header.%s", name), v))
-					}
-				}
+				eventAttrs = appendMessageHeaderEventAttrs(eventAttrs, msg.Header())
 			}
 			if cfg.eventData {
-				dataFull := string(msg.Data())
-				dataTrunc := dataFull
-				if cfg.truncateDataAt > 0 && len(dataFull) > cfg.truncateDataAt {
-					dataTrunc = dataFull[:cfg.truncateDataAt]
-				}
-				eventAttrs = append(eventAttrs,
-					attribute.String("nats.data", dataTrunc),
-					attribute.Int("nats.data_length", len(dataFull)),
-					attribute.Bool("nats.data_truncated", len(dataFull) != len(dataTrunc)),
-				)
+				eventAttrs = appendMessageDataEventAttrs(eventAttrs, msg.Data(), cfg.truncateDataAt)
 			}
 			if len(eventAttrs) > 0 {
 				span.AddEvent("nats.message", trace.WithAttributes(eventAttrs...))
@@ -153,4 +142,53 @@ func Middleware(opts ...MiddlewareOption) peanats.MsgMiddleware {
 			return err
 		})
 	}
+}
+
+// appendMessageHeaderEventAttrs appends nats.header.* attributes for each
+// header value. Headers carrying invalid UTF-8 in their name or value are
+// skipped: OTLP string fields must be valid UTF-8, and a single offending
+// value fails marshaling of the whole span batch on export.
+func appendMessageHeaderEventAttrs(attrs []attribute.KeyValue, header peanats.Header) []attribute.KeyValue {
+	for name, values := range header {
+		name = textproto.CanonicalMIMEHeaderKey(name)
+		if !utf8.ValidString(name) {
+			continue
+		}
+		for _, v := range values {
+			if !utf8.ValidString(v) {
+				continue
+			}
+			attrs = append(attrs, attribute.String(fmt.Sprintf("nats.header.%s", name), v))
+		}
+	}
+	return attrs
+}
+
+// appendMessageDataEventAttrs appends message data attributes: payload length
+// and truncation flag always; the payload itself only when it is valid UTF-8.
+// Binary payloads (e.g. protobuf) are marked with nats.data_encoding=binary
+// instead — a raw binary string would be invalid UTF-8 and fail OTLP
+// marshaling, dropping the whole span batch on export.
+func appendMessageDataEventAttrs(attrs []attribute.KeyValue, dataFull []byte, truncateAt int) []attribute.KeyValue {
+	dataTrunc := dataFull
+	truncated := false
+	if truncateAt > 0 && len(dataFull) > truncateAt {
+		dataTrunc = dataFull[:truncateAt]
+		truncated = true
+		// Back off to a rune boundary so truncation never splits a multi-byte
+		// UTF-8 rune and turns a text payload "binary".
+		for !utf8.Valid(dataTrunc) && utf8.Valid(dataFull) {
+			dataTrunc = dataTrunc[:len(dataTrunc)-1]
+		}
+	}
+	attrs = append(attrs,
+		attribute.Int("nats.data_length", len(dataFull)),
+		attribute.Bool("nats.data_truncated", truncated),
+	)
+	if utf8.Valid(dataTrunc) {
+		attrs = append(attrs, attribute.String("nats.data", string(dataTrunc)))
+	} else {
+		attrs = append(attrs, attribute.String("nats.data_encoding", "binary"))
+	}
+	return attrs
 }

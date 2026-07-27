@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"net/textproto"
 
 	"github.com/mikluko/peanats"
 	"github.com/mikluko/peanats/requester"
@@ -48,7 +46,9 @@ func RequesterWithEventHeaders[RQ, RS any]() RequesterOption[RQ, RS] {
 }
 
 // RequesterWithEventData enables adding message data as span event attributes, truncated to the given length.
-// A zero or negative truncateAt means no truncation.
+// A zero or negative truncateAt means no truncation. The payload is recorded as the nats.data
+// attribute only when it is valid UTF-8; binary payloads are marked with nats.data_encoding=binary
+// instead, keeping the span exportable.
 func RequesterWithEventData[RQ, RS any](truncateAt int) RequesterOption[RQ, RS] {
 	return func(req *tracingRequester[RQ, RS]) {
 		req.eventData = true
@@ -83,26 +83,13 @@ func NewRequester[RQ, RS any](req requester.Requester[RQ, RS], opts ...Requester
 func buildMessageEventAttrs(header peanats.Header, data any, eventHeaders, eventData bool, truncateAt int) []attribute.KeyValue {
 	var attrs []attribute.KeyValue
 	if eventHeaders && header != nil {
-		for name, values := range header {
-			name = textproto.CanonicalMIMEHeaderKey(name)
-			for _, v := range values {
-				attrs = append(attrs, attribute.String(fmt.Sprintf("nats.header.%s", name), v))
-			}
-		}
+		attrs = appendMessageHeaderEventAttrs(attrs, header)
 	}
 	if eventData && data != nil {
-		b, err := json.Marshal(data)
-		if err == nil {
-			dataFull := string(b)
-			dataTrunc := dataFull
-			if truncateAt > 0 && len(dataFull) > truncateAt {
-				dataTrunc = dataFull[:truncateAt]
-			}
-			attrs = append(attrs,
-				attribute.String("nats.data", dataTrunc),
-				attribute.Int("nats.data_length", len(dataFull)),
-				attribute.Bool("nats.data_truncated", len(dataFull) != len(dataTrunc)),
-			)
+		// json.Marshal output is always valid UTF-8; the shared helper still
+		// applies so truncation never splits a multi-byte rune.
+		if b, err := json.Marshal(data); err == nil {
+			attrs = appendMessageDataEventAttrs(attrs, b, truncateAt)
 		}
 	}
 	return attrs
