@@ -3,11 +3,15 @@ package trace
 import (
 	"context"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/mikluko/peanats"
+	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -202,4 +206,125 @@ func TestNATSHeaderExtraction(t *testing.T) {
 			t.Log("Expected: MapCarrier fails because OpenTelemetry propagation expects lowercase headers")
 		}
 	})
+}
+
+// messageEventAttrs extracts the nats.message span event attributes from the
+// single exported span as a key-indexed map.
+func messageEventAttrs(t *testing.T, exporter *tracetest.InMemoryExporter) map[string]attribute.Value {
+	t.Helper()
+	spans := exporter.GetSpans()
+	if len(spans) != 1 {
+		t.Fatalf("expected 1 exported span, got %d", len(spans))
+	}
+	for _, ev := range spans[0].Events {
+		if ev.Name == "nats.message" {
+			attrs := make(map[string]attribute.Value, len(ev.Attributes))
+			for _, kv := range ev.Attributes {
+				attrs[string(kv.Key)] = kv.Value
+			}
+			return attrs
+		}
+	}
+	t.Fatal("nats.message span event not found")
+	return nil
+}
+
+func handleWithEventData(t *testing.T, msg *mockMsg, truncateAt int) *tracetest.InMemoryExporter {
+	t.Helper()
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+
+	middleware := Middleware(
+		MiddlewareWithTracer(tp.Tracer("test")),
+		MiddlewareWithSpanKind(trace.SpanKindConsumer),
+		MiddlewareWithEventHeaders(),
+		MiddlewareWithEventData(truncateAt),
+	)
+	if err := middleware(&mockHandler{}).HandleMsg(context.Background(), msg); err != nil {
+		t.Fatalf("HandleMsg failed: %v", err)
+	}
+	return exporter
+}
+
+func TestMiddleware_EventDataTextPayload(t *testing.T) {
+	exporter := handleWithEventData(t, &mockMsg{
+		subject: "test.subject",
+		data:    []byte("hello world"),
+		header:  make(peanats.Header),
+	}, 1024)
+
+	attrs := messageEventAttrs(t, exporter)
+	assert.Equal(t, "hello world", attrs["nats.data"].AsString())
+	assert.Equal(t, int64(11), attrs["nats.data_length"].AsInt64())
+	assert.False(t, attrs["nats.data_truncated"].AsBool())
+	_, hasEncoding := attrs["nats.data_encoding"]
+	assert.False(t, hasEncoding)
+}
+
+func TestMiddleware_EventDataBinaryPayload(t *testing.T) {
+	exporter := handleWithEventData(t, &mockMsg{
+		subject: "test.subject",
+		data:    []byte{0xff, 0xfe, 0x41, 0x80},
+		header:  make(peanats.Header),
+	}, 1024)
+
+	attrs := messageEventAttrs(t, exporter)
+	_, hasData := attrs["nats.data"]
+	assert.False(t, hasData, "binary payload must not be recorded as nats.data")
+	assert.Equal(t, "binary", attrs["nats.data_encoding"].AsString())
+	assert.Equal(t, int64(4), attrs["nats.data_length"].AsInt64())
+	assert.False(t, attrs["nats.data_truncated"].AsBool())
+}
+
+func TestMiddleware_EventDataTruncationKeepsRuneBoundary(t *testing.T) {
+	// 10 ascii bytes, then a 3-byte euro sign, then 3 more bytes: truncation at
+	// 12 lands inside the euro sign and must back off to the rune boundary.
+	payload := append([]byte("aaaaaaaaaa"), []byte("€zzz")...)
+	exporter := handleWithEventData(t, &mockMsg{
+		subject: "test.subject",
+		data:    payload,
+		header:  make(peanats.Header),
+	}, 12)
+
+	attrs := messageEventAttrs(t, exporter)
+	assert.Equal(t, "aaaaaaaaaa", attrs["nats.data"].AsString())
+	assert.Equal(t, int64(16), attrs["nats.data_length"].AsInt64())
+	assert.True(t, attrs["nats.data_truncated"].AsBool())
+	_, hasEncoding := attrs["nats.data_encoding"]
+	assert.False(t, hasEncoding)
+}
+
+func TestMiddleware_EventHeadersInvalidUTF8Skipped(t *testing.T) {
+	header := make(peanats.Header)
+	header.Set("X-Good", "ok")
+	header["X-Bad"] = []string{"\xff\xfe"}
+
+	exporter := handleWithEventData(t, &mockMsg{
+		subject: "test.subject",
+		data:    []byte("test data"),
+		header:  header,
+	}, 1024)
+
+	attrs := messageEventAttrs(t, exporter)
+	assert.Equal(t, "ok", attrs["nats.header.X-Good"].AsString())
+	_, hasBad := attrs["nats.header.X-Bad"]
+	assert.False(t, hasBad, "invalid UTF-8 header values must be skipped")
+}
+
+func TestBuildMessageEventAttrs_JSONTruncationStaysValidUTF8(t *testing.T) {
+	data := map[string]string{"msg": "aaaaaaaaaa€zzzzzzzzzz"}
+	attrs := buildMessageEventAttrs(nil, data, false, true, 16)
+
+	var got *attribute.Value
+	for _, kv := range attrs {
+		if string(kv.Key) == "nats.data" {
+			v := kv.Value
+			got = &v
+		}
+		assert.NotEqual(t, "nats.data_encoding", string(kv.Key), "JSON payloads are always valid UTF-8")
+	}
+	if got == nil {
+		t.Fatal("nats.data attribute not found")
+	}
+	assert.True(t, utf8.ValidString(got.AsString()), "truncated JSON must remain valid UTF-8")
 }
