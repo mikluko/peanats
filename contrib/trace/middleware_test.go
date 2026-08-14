@@ -2,6 +2,7 @@ package trace
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"unicode/utf8"
 
@@ -309,6 +310,35 @@ func TestMiddleware_EventHeadersInvalidUTF8Skipped(t *testing.T) {
 	assert.Equal(t, "ok", attrs["nats.header.X-Good"].AsString())
 	_, hasBad := attrs["nats.header.X-Bad"]
 	assert.False(t, hasBad, "invalid UTF-8 header values must be skipped")
+}
+
+func TestMiddleware_ConcurrentHandlersShareNoSpanAttributeBacking(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+
+	// Three separate option calls leave the accumulated slice with spare
+	// capacity, so per-message appends onto a shared backing array would be
+	// concurrent writes to the same element. Run under -race.
+	middleware := Middleware(
+		MiddlewareWithTracer(tp.Tracer("test")),
+		MiddlewareWithSpanAttributes(attribute.String("a", "1")),
+		MiddlewareWithSpanAttributes(attribute.String("b", "2")),
+		MiddlewareWithSpanAttributes(attribute.String("c", "3")),
+	)
+	wrapped := middleware(peanats.MsgHandlerFunc(func(context.Context, peanats.Msg) error {
+		return nil
+	}))
+
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			msg := &mockMsg{subject: "test.subject", data: []byte("x"), header: make(peanats.Header)}
+			assert.NoError(t, wrapped.HandleMsg(context.Background(), msg))
+		}()
+	}
+	wg.Wait()
 }
 
 func TestBuildMessageEventAttrs_JSONTruncationStaysValidUTF8(t *testing.T) {

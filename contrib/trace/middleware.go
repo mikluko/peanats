@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/textproto"
+	"slices"
 	"unicode/utf8"
 
 	"github.com/mikluko/peanats"
@@ -89,6 +90,9 @@ func Middleware(opts ...MiddlewareOption) peanats.MsgMiddleware {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+	// Clipping forces every per-message append to allocate its own backing
+	// array; concurrent handlers must never write into the shared slice.
+	cfg.spanAttributes = slices.Clip(cfg.spanAttributes)
 	return func(next peanats.MsgHandler) peanats.MsgHandler {
 		return peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
 			spanAttrs := append(cfg.spanAttributes,

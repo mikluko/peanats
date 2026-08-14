@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 
 	"github.com/mikluko/peanats"
 	"github.com/mikluko/peanats/requester"
@@ -76,6 +77,9 @@ func NewRequester[RQ, RS any](req requester.Requester[RQ, RS], opts ...Requester
 	for _, opt := range opts {
 		opt(res)
 	}
+	// Clipping forces every per-request append to allocate its own backing
+	// array; concurrent requests must never write into the shared slice.
+	res.attrs = slices.Clip(res.attrs)
 	return res
 }
 
