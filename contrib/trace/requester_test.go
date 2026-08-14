@@ -3,6 +3,7 @@ package trace
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/mikluko/peanats"
@@ -156,6 +157,54 @@ func TestTracingRequester_RequestError(t *testing.T) {
 	assert.Equal(t, "peanats.request", span.Name)
 	assert.Len(t, span.Events, 1)
 	assert.Equal(t, "exception", span.Events[0].Name)
+}
+
+func TestTracingRequester_HostileStringsSanitized(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSyncer(exporter),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	tracer := tp.Tracer("test")
+	mockReq := requestermock.NewRequester[testRequest, testResponse](t)
+
+	ctx := context.Background()
+	subject := "req.\xff\xfe.subject"
+	reqData := &testRequest{Message: "hello"}
+	reqErr := fmt.Errorf("request failed: %s", []byte{0xff, 0xfe})
+
+	mockReq.EXPECT().Request(
+		mock.AnythingOfType("*context.valueCtx"),
+		subject,
+		reqData,
+		mock.AnythingOfType("[]requester.RequestOption"),
+	).Return(nil, reqErr)
+
+	req := NewRequester(mockReq,
+		RequesterWithTracer[testRequest, testResponse](tracer),
+		RequesterWithSpanName[testRequest, testResponse]("request\xff"),
+		RequesterWithAttributes[testRequest, testResponse](
+			attribute.String("static\xffkey", "static\xfevalue"),
+		),
+	)
+
+	resp, err := req.Request(ctx, subject, reqData)
+	assert.Same(t, reqErr, err, "the caller must receive the original error")
+	assert.Nil(t, resp)
+
+	tp.ForceFlush(ctx)
+	spans := exporter.GetSpans()
+	if assert.Len(t, spans, 1) {
+		span := spans[0]
+		assertExportedStringsValid(t, span)
+		assert.Equal(t, "request�", span.Name)
+		assert.Equal(t, "request failed: �", span.Status.Description)
+		attrs := attrMap(span.Attributes)
+		assert.Equal(t, "req.�.subject", attrs["nats.subject"].AsString())
+		assert.Equal(t, "static�value", attrs["static�key"].AsString())
+	}
 }
 
 func TestTracingRequester_ResponseReceiver(t *testing.T) {

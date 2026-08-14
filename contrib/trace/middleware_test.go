@@ -2,10 +2,13 @@ package trace
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"unicode/utf8"
 
 	"github.com/mikluko/peanats"
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -309,6 +312,101 @@ func TestMiddleware_EventHeadersInvalidUTF8Skipped(t *testing.T) {
 	assert.Equal(t, "ok", attrs["nats.header.X-Good"].AsString())
 	_, hasBad := attrs["nats.header.X-Bad"]
 	assert.False(t, hasBad, "invalid UTF-8 header values must be skipped")
+}
+
+func TestMiddleware_ConcurrentHandlersShareNoSpanAttributeBacking(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+
+	// Three separate option calls leave the accumulated slice with spare
+	// capacity, so per-message appends onto a shared backing array would be
+	// concurrent writes to the same element. Run under -race.
+	middleware := Middleware(
+		MiddlewareWithTracer(tp.Tracer("test")),
+		MiddlewareWithSpanAttributes(attribute.String("a", "1")),
+		MiddlewareWithSpanAttributes(attribute.String("b", "2")),
+		MiddlewareWithSpanAttributes(attribute.String("c", "3")),
+	)
+	wrapped := middleware(peanats.MsgHandlerFunc(func(context.Context, peanats.Msg) error {
+		return nil
+	}))
+
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			msg := &mockMsg{subject: "test.subject", data: []byte("x"), header: make(peanats.Header)}
+			assert.NoError(t, wrapped.HandleMsg(context.Background(), msg))
+		}()
+	}
+	wg.Wait()
+}
+
+type mockMetadatableMsg struct {
+	mockMsg
+	meta jetstream.MsgMetadata
+}
+
+func (m *mockMetadatableMsg) Metadata() (*jetstream.MsgMetadata, error) { return &m.meta, nil }
+
+func TestMiddleware_HostileStringsSanitized(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+
+	handlerErr := fmt.Errorf("unexpected payload: %s", []byte{0xff, 0xfe, 0x80})
+	middleware := Middleware(
+		MiddlewareWithTracer(tp.Tracer("test")),
+		MiddlewareWithSpanName("handle\xff"),
+		MiddlewareWithSpanAttributes(attribute.String("static\xffkey", "static\xfevalue")),
+	)
+	wrapped := middleware(peanats.MsgHandlerFunc(func(context.Context, peanats.Msg) error {
+		return handlerErr
+	}))
+
+	msg := &mockMsg{
+		subject: "check.\xff\xfe.result",
+		data:    []byte("x"),
+		header:  make(peanats.Header),
+	}
+	err := wrapped.HandleMsg(context.Background(), msg)
+	assert.Same(t, handlerErr, err, "the caller must receive the original error")
+
+	spans := exporter.GetSpans()
+	if assert.Len(t, spans, 1) {
+		span := spans[0]
+		assertExportedStringsValid(t, span)
+		assert.Equal(t, "handle�", span.Name)
+		assert.Equal(t, "unexpected payload: �", span.Status.Description)
+		attrs := attrMap(span.Attributes)
+		assert.Equal(t, "check.�.result", attrs["nats.subject"].AsString())
+		assert.Equal(t, "static�value", attrs["static�key"].AsString())
+	}
+}
+
+func TestMiddleware_JetStreamMetadataInvalidUTF8Sanitized(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+
+	middleware := Middleware(MiddlewareWithTracer(tp.Tracer("test")))
+	wrapped := middleware(peanats.MsgHandlerFunc(func(context.Context, peanats.Msg) error {
+		return nil
+	}))
+
+	msg := &mockMetadatableMsg{
+		mockMsg: mockMsg{subject: "test.subject", data: []byte("x"), header: make(peanats.Header)},
+		meta:    jetstream.MsgMetadata{Stream: "STREAM\xff", Consumer: "consumer\xfe", Domain: "hub"},
+	}
+	assert.NoError(t, wrapped.HandleMsg(context.Background(), msg))
+
+	spans := exporter.GetSpans()
+	if assert.Len(t, spans, 1) {
+		assertExportedStringsValid(t, spans[0])
+		attrs := attrMap(spans[0].Attributes)
+		assert.Equal(t, "STREAM�", attrs["nats.jetstream.stream"].AsString())
+		assert.Equal(t, "consumer�", attrs["nats.jetstream.consumer"].AsString())
+		assert.Equal(t, "hub", attrs["nats.jetstream.domain"].AsString())
+	}
 }
 
 func TestBuildMessageEventAttrs_JSONTruncationStaysValidUTF8(t *testing.T) {

@@ -119,6 +119,14 @@ Each package implements a specific messaging pattern with full type safety:
 
 ### Notes
 
+#### OTLP String Sanitization in contrib/trace
+
+- `contrib/trace/sanitize.go`: `sanitizeString` (`strings.ToValidUTF8` with U+FFFD), `sanitizeError` (wraps only when the message is invalid; `Unwrap` preserves the original), `sanitizeAttrs` (copy-on-write; keys, STRING and STRINGSLICE values)
+- Applied at every string attachment point: subjects, JetStream stream/consumer/domain, errors recorded via `RecordError`/`SetStatus` and the publisher `error` event attribute, caller-supplied attributes plus span/event names (sanitized once at construction)
+- Complements the v0.26.2 payload/header handling: `nats.data` validity check and invalid-header skipping stay as-is; the sanitizer covers every other string
+- Callers always receive the original error; only the recorded telemetry is sanitized
+- Middleware and requester also `slices.Clip` the option-accumulated attribute slice: per-message appends must never write into shared backing (data race; regression test runs under -race)
+
 #### Bucket Content-Type Default (#30)
 
 - `bucket.BucketContentType(codec.ContentType)` sets default marshaling codec at bucket level
@@ -273,6 +281,7 @@ Each package implements a specific messaging pattern with full type safety:
 
 ### Changelog
 
+- 2026-08-14: contrib/trace: sanitize every string reaching the OTLP exporter (subjects, JetStream metadata, error messages, caller attributes, span/event names); fixed span-attribute slice shared across concurrent handlers
 - 2026-06-09: bucket: `BucketContentType` option sets default marshaling codec at bucket level (fallback-only, explicit entry header wins) (#30)
 - 2026-06-01: transport: SubscribeChan defined channel ownership; Unsubscribe joins mirror goroutine and closes caller channel (breaking: callers must not close); fixes data race + goroutine leak (#28)
 - 2026-04-13: v0.25.0 — contrib/prom default subject mapper is now `SubjectDepth(3)` (breaking: restore with `MiddlewareSubjectMapper(nil)`); see UPGRADING.md (#25)

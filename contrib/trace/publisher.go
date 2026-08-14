@@ -43,6 +43,8 @@ func NewPublisher(pub publisher.Publisher, opts ...PublisherOption) publisher.Pu
 	for _, opt := range opts {
 		opt(&res)
 	}
+	res.eventName = sanitizeString(res.eventName)
+	res.attrs = sanitizeAttrs(res.attrs)
 	return &res
 }
 
@@ -58,9 +60,9 @@ func (p *tracingPublisher) Publish(ctx context.Context, subject string, data any
 
 	// Add event to span if it's recording
 	if span.IsRecording() {
-		attrs := append([]attribute.KeyValue{attribute.String("nats.subject", subject)}, p.attrs...)
+		attrs := append([]attribute.KeyValue{attribute.String("nats.subject", sanitizeString(subject))}, p.attrs...)
 		if err != nil {
-			attrs = append(attrs, attribute.String("error", err.Error()))
+			attrs = append(attrs, attribute.String("error", sanitizeString(err.Error())))
 		}
 		span.AddEvent(p.eventName, trace.WithAttributes(attrs...))
 	}
