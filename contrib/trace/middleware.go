@@ -90,20 +90,21 @@ func Middleware(opts ...MiddlewareOption) peanats.MsgMiddleware {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+	cfg.spanName = sanitizeString(cfg.spanName)
 	// Clipping forces every per-message append to allocate its own backing
 	// array; concurrent handlers must never write into the shared slice.
-	cfg.spanAttributes = slices.Clip(cfg.spanAttributes)
+	cfg.spanAttributes = slices.Clip(sanitizeAttrs(cfg.spanAttributes))
 	return func(next peanats.MsgHandler) peanats.MsgHandler {
 		return peanats.MsgHandlerFunc(func(ctx context.Context, msg peanats.Msg) error {
 			spanAttrs := append(cfg.spanAttributes,
-				attribute.String("nats.subject", msg.Subject()),
+				attribute.String("nats.subject", sanitizeString(msg.Subject())),
 			)
 			if metadatable, ok := msg.(peanats.Metadatable); ok {
 				if meta, err := metadatable.Metadata(); err == nil {
 					spanAttrs = append(spanAttrs,
-						attribute.String("nats.jetstream.stream", meta.Stream),
-						attribute.String("nats.jetstream.consumer", meta.Consumer),
-						attribute.String("nats.jetstream.domain", meta.Domain),
+						attribute.String("nats.jetstream.stream", sanitizeString(meta.Stream)),
+						attribute.String("nats.jetstream.consumer", sanitizeString(meta.Consumer)),
+						attribute.String("nats.jetstream.domain", sanitizeString(meta.Domain)),
 					)
 				}
 			}
@@ -140,8 +141,9 @@ func Middleware(opts ...MiddlewareOption) peanats.MsgMiddleware {
 
 			err := next.HandleMsg(ctxSpan, msg)
 			if err != nil {
-				span.RecordError(err)
-				span.SetStatus(codes.Error, err.Error())
+				safe := sanitizeError(err)
+				span.RecordError(safe)
+				span.SetStatus(codes.Error, safe.Error())
 			}
 			return err
 		})

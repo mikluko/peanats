@@ -77,9 +77,10 @@ func NewRequester[RQ, RS any](req requester.Requester[RQ, RS], opts ...Requester
 	for _, opt := range opts {
 		opt(res)
 	}
+	res.spanName = sanitizeString(res.spanName)
 	// Clipping forces every per-request append to allocate its own backing
 	// array; concurrent requests must never write into the shared slice.
-	res.attrs = slices.Clip(res.attrs)
+	res.attrs = slices.Clip(sanitizeAttrs(res.attrs))
 	return res
 }
 
@@ -104,7 +105,7 @@ func (r *tracingRequester[RQ, RS]) Request(ctx context.Context, subject string, 
 	// Start a new span for the request operation
 	spanOpts := []trace.SpanStartOption{
 		trace.WithSpanKind(trace.SpanKindClient),
-		trace.WithAttributes(append(r.attrs, attribute.String("nats.subject", subject))...),
+		trace.WithAttributes(append(r.attrs, attribute.String("nats.subject", sanitizeString(subject)))...),
 	}
 	ctx, span := r.tracer.Start(ctx, r.spanName, spanOpts...)
 	defer span.End()
@@ -121,8 +122,9 @@ func (r *tracingRequester[RQ, RS]) Request(ctx context.Context, subject string, 
 	// Execute the request with trace headers
 	resp, err := r.Requester.Request(ctx, subject, data, append(opts, requester.RequestHeader(header))...)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		safe := sanitizeError(err)
+		span.RecordError(safe)
+		span.SetStatus(codes.Error, safe.Error())
 		return nil, err
 	}
 
@@ -139,7 +141,7 @@ func (r *tracingRequester[RQ, RS]) ResponseReceiver(ctx context.Context, subject
 	// Start a new span for the response receiver operation
 	spanOpts := []trace.SpanStartOption{
 		trace.WithSpanKind(trace.SpanKindClient),
-		trace.WithAttributes(append(r.attrs, attribute.String("nats.subject", subject))...),
+		trace.WithAttributes(append(r.attrs, attribute.String("nats.subject", sanitizeString(subject)))...),
 	}
 	ctx, span := r.tracer.Start(ctx, r.spanName, spanOpts...)
 
@@ -156,8 +158,9 @@ func (r *tracingRequester[RQ, RS]) ResponseReceiver(ctx context.Context, subject
 	reqOpts := []requester.RequestOption{requester.RequestHeader(header)}
 	receiver, err := r.Requester.ResponseReceiver(ctx, subject, data, append(opts, requester.ResponseReceiverRequestOptions(reqOpts...))...)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		safe := sanitizeError(err)
+		span.RecordError(safe)
+		span.SetStatus(codes.Error, safe.Error())
 		span.End()
 		return nil, err
 	}
@@ -187,7 +190,7 @@ func (r *tracingResponseReceiver[T]) Next(ctx context.Context) (requester.Respon
 	if err != nil {
 		// Record error and return
 		if !errors.Is(err, requester.ErrSkip) && !errors.Is(err, requester.ErrOver) {
-			r.span.RecordError(err)
+			r.span.RecordError(sanitizeError(err))
 		}
 		return nil, err
 	}
@@ -211,8 +214,9 @@ func (r *tracingResponseReceiver[T]) Stop() error {
 	defer r.span.End()
 	err := r.ResponseReceiver.Stop()
 	if err != nil {
-		r.span.RecordError(err)
-		r.span.SetStatus(codes.Error, err.Error())
+		safe := sanitizeError(err)
+		r.span.RecordError(safe)
+		r.span.SetStatus(codes.Error, safe.Error())
 	}
 	return err
 }

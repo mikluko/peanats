@@ -3,6 +3,7 @@ package trace
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/mikluko/peanats/publisher"
@@ -112,6 +113,37 @@ func TestTracingPublisher_WithError(t *testing.T) {
 		}
 	}
 	assert.Equal(t, "publish failed", errorAttr.Value.AsString())
+}
+
+func TestTracingPublisher_HostileStringsSanitized(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+
+	pubErr := fmt.Errorf("publish failed: %s", []byte{0xff, 0xfe})
+	mock := &mockPublisher{err: pubErr}
+	pub := NewPublisher(mock,
+		PublisherWithEventName("publish\xff"),
+		PublisherWithAttributes(attribute.String("static\xffkey", "static\xfevalue")),
+	)
+
+	ctx, span := tp.Tracer("test").Start(context.Background(), "parent-span")
+	err := pub.Publish(ctx, "pub.\xff.subject", "data")
+	span.End()
+
+	assert.Same(t, pubErr, err, "the caller must receive the original error")
+
+	spans := exporter.GetSpans()
+	if assert.Len(t, spans, 1) {
+		assertExportedStringsValid(t, spans[0])
+		if assert.Len(t, spans[0].Events, 1) {
+			event := spans[0].Events[0]
+			assert.Equal(t, "publish�", event.Name)
+			attrs := attrMap(event.Attributes)
+			assert.Equal(t, "pub.�.subject", attrs["nats.subject"].AsString())
+			assert.Equal(t, "publish failed: �", attrs["error"].AsString())
+			assert.Equal(t, "static�value", attrs["static�key"].AsString())
+		}
+	}
 }
 
 func TestTracingPublisher_NoSpan(t *testing.T) {
